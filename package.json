@@ -1,6 +1,6 @@
 {
   "name": "@kepler-app/plugin-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for building Kepler plugins.",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,6 +14,10 @@
   "keywords": ["kepler", "plugin", "sdk"],
   "author": "Leonhard Breuer",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cheetahbyte/kepler-sdk"
+  },
   "publishConfig": {
     "access": "public"
   },
