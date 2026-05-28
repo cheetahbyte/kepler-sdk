@@ -1,18 +1,16 @@
-export type PluginIcon =
-  | { type: "sfSymbol"; value: string }
-  | { type: "emoji"; value: string }
-  | { type: "appIcon"; path: string };
+/** SF Symbol name, single emoji, or HTTPS URL — passed as plain string over XPC bridge. */
+export type PluginIcon = string;
 
 export const Icon = {
-  sfSymbol(value: string): PluginIcon {
-    return { type: "sfSymbol", value };
+  sfSymbol(name: string): PluginIcon {
+    return name;
   },
 
-  emoji(value: string): PluginIcon {
-    return { type: "emoji", value };
+  emoji(char: string): PluginIcon {
+    return char;
   },
 
-  appIcon(path: string): PluginIcon {
-    return { type: "appIcon", path };
+  url(httpsUrl: string): PluginIcon {
+    return httpsUrl;
   },
 };

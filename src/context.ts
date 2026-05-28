@@ -1,43 +1,15 @@
-import type { PluginSettingValue } from "./settings";
-
 export type PluginContext = {
+  /** Locale string, e.g. "en_US" */
   locale: string;
-  timezone: string;
+  /** ISO 8601 timestamp of "now" */
   now: string;
-
-  settings: PluginSettingsAPI;
-  storage: PluginStorageAPI;
-  network: PluginNetworkAPI;
-  clipboard: PluginClipboardAPI;
+  /** Persistent key-value store scoped to this plugin */
+  storage: PluginStorage;
+  /** fetch() is available as a global polyfill — no import needed */
 };
 
-export type PluginSettingsAPI = {
-  get(id: string): Promise<PluginSettingValue | null>;
-  set(id: string, value: PluginSettingValue): Promise<void>;
-};
-
-export type PluginStorageAPI = {
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string): Promise<void>;
-  remove(key: string): Promise<void>;
-};
-
-export type PluginClipboardAPI = {
-  copy(value: string): Promise<void>;
-};
-
-export type PluginNetworkAPI = {
-  fetch(url: string, options?: PluginFetchOptions): Promise<PluginFetchResponse>;
-};
-
-export type PluginFetchOptions = {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  headers?: Record<string, string>;
-  body?: string;
-};
-
-export type PluginFetchResponse = {
-  status: number;
-  headers: Record<string, string>;
-  body: string;
-};
+export interface PluginStorage {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<void>;
+}

@@ -1,23 +1,18 @@
 export type PluginAction =
+  | { type: "open"; path: string }
   | { type: "copy"; value: string }
-  | { type: "openURL"; url: string }
-  | { type: "openFile"; path: string }
-  | { type: "activateApp"; path: string };
+  | { type: "url"; url: string };
 
 export const Action = {
+  open(path: string): PluginAction {
+    return { type: "open", path };
+  },
+
   copy(value: string): PluginAction {
     return { type: "copy", value };
   },
 
-  openURL(url: string): PluginAction {
-    return { type: "openURL", url };
-  },
-
-  openFile(path: string): PluginAction {
-    return { type: "openFile", path };
-  },
-
-  activateApp(path: string): PluginAction {
-    return { type: "activateApp", path };
+  url(url: string): PluginAction {
+    return { type: "url", url };
   },
 };
