@@ -1,5 +1,5 @@
 {
-  "name": "@kepler/plugin-sdk",
+  "name": "@kepler-app/plugin-sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for building Kepler plugins.",
   "type": "module",
