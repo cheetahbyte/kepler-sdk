@@ -61,7 +61,24 @@ Your `tsconfig.json` needs no DOM types since you're in a JSC host:
 }
 ```
 
-Bundling to IIFE is mandatory. Kepler expects a global `KeplerPlugin` object:
+Bundling to IIFE is mandatory. Kepler expects a global `KeplerPlugin` object.
+The SDK CLI bundles your script and writes `manifest.json` with a single command:
+
+```bash
+kepler-plugin bundle src/index.ts --out "$HOME/Library/Application Support/Kepler/Plugins/my-plugin.keplugin"
+```
+
+If your plugin includes images or other assets, pass an `--assets` directory:
+
+```bash
+kepler-plugin bundle src/index.ts --out "$HOME/Library/Application Support/Kepler/Plugins/my-plugin.keplugin" --assets assets
+```
+
+This copies everything inside `assets/` into the plugin bundle, so
+`Icon.asset("icons/avatar.png")` resolves to
+`my-plugin.keplugin/icons/avatar.png` at runtime.
+
+You still need a `tsup.config.ts` so you can run `tsup` directly for faster iteration:
 
 ```ts
 // tsup.config.ts
@@ -78,11 +95,15 @@ export default defineConfig({
 });
 ```
 
-Build the script and generate a manifest:
+For the fastest setup, add this to your `package.json` scripts:
 
-```bash
-pnpm exec tsup
-pnpm exec kepler-plugin manifest src/index.ts --out "$HOME/Library/Application Support/Kepler/Plugins/my-plugin.keplugin/manifest.json"
+```json
+{
+  "scripts": {
+    "build": "kepler-plugin bundle src/index.ts --out \"$HOME/Library/Application Support/Kepler/Plugins/my-plugin.keplugin\"",
+    "dev": "tsup --watch"
+  }
+}
 ```
 
 That's it. Kepler picks up plugins from `~/Library/Application Support/Kepler/Plugins/` by scanning for `.keplugin` bundles that contain both `manifest.json` and `index.js`.
@@ -428,13 +449,29 @@ Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically
 
 ## CLI reference
 
-The SDK ships a `kepler-plugin` binary with one subcommand:
+The SDK ships a `kepler-plugin` binary with two subcommands:
+
+### `kepler-plugin bundle <entry.ts> --out <bundle.keplugin> [--assets <dir>]`
+
+Builds a complete plugin bundle in one step:
+
+1. Bundles `entry.ts` to `index.js` (IIFE, `KeplerPlugin` global, SDK inlined).
+2. Writes `manifest.json` with inferred capabilities and validated permissions.
+3. Copies all files from `--assets <dir>` into the bundle (filtered to skip hidden files).
+
+The output directory is a valid `.keplugin` folder ready for Kepler to pick up.
 
 ```bash
-kepler-plugin manifest <entry.ts> [--out <path>]
+kepler-plugin bundle src/index.ts --out "$HOME/Library/Application Support/Kepler/Plugins/my-plugin.keplugin" --assets assets
 ```
 
-It reads your plugin's default export, inspects which contributions you've defined, validates permissions and network URLs, and writes a `manifest.json`. If `--out` is omitted, it prints to stdout.
+### `kepler-plugin manifest <entry.ts> [--out <path>]`
+
+Reads your plugin's default export, inspects which contributions you've defined, validates permissions and network URLs, and writes a `manifest.json`. If `--out` is omitted, it prints to stdout.
+
+```bash
+kepler-plugin manifest src/index.ts --out manifest.json
+```
 
 What gets written:
 

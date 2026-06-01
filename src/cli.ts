@@ -1,16 +1,31 @@
 import { createJiti } from "jiti";
-import { existsSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+
+type ManifestObject = Record<string, unknown>;
 
 function main(): Promise<void> {
   const args = process.argv.slice(2);
   const subcommand = args[0];
 
-  if (subcommand !== "manifest") {
-    console.error("Usage: kepler-plugin manifest <entry.ts> [--out <path>]");
-    process.exit(1);
+  if (subcommand === "manifest") {
+    return handleManifest(args);
   }
 
+  if (subcommand === "bundle") {
+    return handleBundle(args);
+  }
+
+  console.error("Usage:");
+  console.error("  kepler-plugin bundle <entry.ts> --out <bundle.keplugin> [--assets <dir>]");
+  console.error("  kepler-plugin manifest <entry.ts> [--out <path>]");
+  process.exit(1);
+}
+
+// MARK: - Manifest
+
+async function handleManifest(args: string[]): Promise<void> {
   const outIndex = args.indexOf("--out");
   let outPath: string | undefined;
 
@@ -31,10 +46,110 @@ function main(): Promise<void> {
     process.exit(1);
   }
 
-  return manifest(entry, outPath);
+  const manifestObj = await buildManifestObject(entry);
+  const text = JSON.stringify(manifestObj, null, 2) + "\n";
+
+  if (outPath) {
+    writeFileSync(outPath, text, "utf-8");
+  } else {
+    process.stdout.write(text);
+  }
 }
 
-async function manifest(entry: string, outPath: string | undefined): Promise<void> {
+// MARK: - Bundle
+
+async function handleBundle(args: string[]): Promise<void> {
+  const outIndex = args.indexOf("--out");
+  let outDir: string | undefined;
+
+  if (outIndex !== -1 && args[outIndex + 1]) {
+    outDir = resolve(process.cwd(), args[outIndex + 1]);
+    args.splice(outIndex, 2);
+  }
+
+  const assetsIndex = args.indexOf("--assets");
+  let assetsDir: string | undefined;
+
+  if (assetsIndex !== -1 && args[assetsIndex + 1]) {
+    assetsDir = resolve(process.cwd(), args[assetsIndex + 1]);
+    args.splice(assetsIndex, 2);
+  }
+
+  const entryArg = args[1];
+  if (!entryArg || !outDir) {
+    console.error("Usage: kepler-plugin bundle <entry.ts> --out <bundle.keplugin> [--assets <dir>]");
+    process.exit(1);
+  }
+
+  const entry = resolve(process.cwd(), entryArg);
+  if (!existsSync(entry)) {
+    console.error(`File not found: ${entry}`);
+    process.exit(1);
+  }
+
+  // Ensure output directory exists.
+  mkdirSync(outDir, { recursive: true });
+
+  // Bundle via tsup (from the project's local install).
+  const tsupBin = resolve(process.cwd(), "node_modules", ".bin", "tsup");
+  const tsup = existsSync(tsupBin) ? tsupBin : "npx";
+
+  const bundleArgs = [
+    entry,
+    "--format", "iife",
+    "--globalName", "KeplerPlugin",
+    "--outDir", outDir,
+  ];
+
+  // Only pass --noExternal as npx arg when falling back.
+  const result = spawnSync(tsup, bundleArgs, {
+    cwd: process.cwd(),
+    stdio: "inherit",
+    shell: tsup === "npx" ? true : false,
+  });
+
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+
+  // Write manifest.
+  const manifestObj = await buildManifestObject(entry);
+  const manifestText = JSON.stringify(manifestObj, null, 2) + "\n";
+  writeFileSync(join(outDir, "manifest.json"), manifestText, "utf-8");
+
+  // Copy assets.
+  if (assetsDir) {
+    copyAssets(resolve(assetsDir), outDir);
+  }
+
+  console.log(`\nWrote plugin to ${outDir}`);
+}
+
+function copyAssets(src: string, dst: string): void {
+  const resolvedSrc = resolve(src);
+  const resolvedDst = resolve(dst);
+
+  if (resolvedSrc === resolvedDst) {
+    console.error("Assets directory must differ from output directory");
+    process.exit(1);
+  }
+  if (resolvedDst.startsWith(resolvedSrc + "/")) {
+    console.error("Output directory must not be inside the assets directory");
+    process.exit(1);
+  }
+
+  cpSync(resolvedSrc, resolvedDst, {
+    recursive: true,
+    filter: (srcPath) => {
+      const name = srcPath.split("/").pop()?.split("\\").pop() ?? "";
+      return !name.startsWith(".");
+    },
+  });
+}
+
+// MARK: - Manifest object building (shared)
+
+async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const jiti = createJiti(import.meta.url);
   const mod = await jiti.import(entry);
   const plugin = (mod as Record<string, unknown>).default ?? mod;
@@ -119,7 +234,7 @@ async function manifest(entry: string, outPath: string | undefined): Promise<voi
     widgetsDesc.length > 0 ||
     lookAheadDesc.length > 0;
 
-  const output: Record<string, unknown> = {
+  const output: ManifestObject = {
     id: meta.id,
     name: meta.name,
     version: meta.version,
@@ -145,14 +260,10 @@ async function manifest(entry: string, outPath: string | undefined): Promise<voi
     output.settings = meta.settings;
   }
 
-  const text = JSON.stringify(output, null, 2) + "\n";
-
-  if (outPath) {
-    writeFileSync(outPath, text, "utf-8");
-  } else {
-    process.stdout.write(text);
-  }
+  return output;
 }
+
+// MARK: - Validation
 
 const VALID_PERMISSIONS = new Set(["network", "maps", "appleScript"]);
 
@@ -174,17 +285,13 @@ function validatePermissions(meta: Record<string, unknown>): string[] {
 function normalizeDomain(raw: string): string | null {
   let domain = raw.trim().toLowerCase();
   if (!domain) return null;
-  // Strip protocol if present
   const protoIdx = domain.indexOf("://");
   if (protoIdx !== -1) domain = domain.slice(protoIdx + 3);
-  // Strip path, port, query
   const slashIdx = domain.indexOf("/");
   if (slashIdx !== -1) domain = domain.slice(0, slashIdx);
   const colonIdx = domain.indexOf(":");
   if (colonIdx !== -1) domain = domain.slice(0, colonIdx);
-  // Remove trailing dot
   domain = domain.replace(/\.+$/, "");
-  // Basic hostname validation
   if (!/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain) && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(domain)) {
     return null;
   }
@@ -195,7 +302,7 @@ function validateNetworkUrls(meta: Record<string, unknown>, permissions: string[
   const raw = meta.networkUrls;
   if (!Array.isArray(raw)) {
     if (permissions.includes("network")) {
-      console.error("metadata.networkUrls must be an array (required when permissions includes \"network\")");
+      console.error('metadata.networkUrls must be an array (required when permissions includes "network")');
       process.exit(1);
     }
     return [];
