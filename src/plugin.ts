@@ -2,21 +2,48 @@ import type { PluginContext } from "./context";
 import type { PluginListItem } from "./results";
 import type { PluginResolution } from "./resolve";
 import type { LookAheadItem } from "./look-ahead";
+import type { PluginCapabilities, PluginPermission } from "./manifest";
+import type { PluginSettingDefinition } from "./settings";
+import type { PluginCommand, PluginProvider, PluginResolver, PluginLookAhead } from "./contributions";
+import type { PluginIcon } from "./icons";
 
 export type MaybePromise<T> = T | Promise<T>;
 
+export type KeplerPluginMeta = {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description?: string;
+  icon?: PluginIcon;
+  capabilities?: Partial<PluginCapabilities>;
+  settings?: PluginSettingDefinition[];
+  permissions?: PluginPermission[];
+  networkUrls?: string[];
+};
+
 export type KeplerPluginObject = {
-  /** Required when capabilities.activatable = true */
+  metadata?: KeplerPluginMeta;
+
+  searchModes?: PluginCommand[];
+  searchProviders?: PluginProvider[];
+  widgets?: PluginResolver[];
+  lookAhead?: PluginLookAhead[];
+  /** @deprecated use metadata */
+  manifest?: KeplerPluginMeta;
+
+  /** @deprecated use searchModes */
   search?(query: string, ctx: PluginContext): MaybePromise<PluginListItem[]>;
 
-  /** Required when capabilities.globalSearch = true */
+  /** @deprecated use searchProviders */
   canHandle?(query: string): boolean;
+  /** @deprecated use searchProviders */
   searchGlobal?(query: string, ctx: PluginContext): MaybePromise<PluginListItem[]>;
 
-  /** Required when capabilities.resolvable = true */
+  /** @deprecated use widgets */
   resolve?(query: string, ctx: PluginContext): MaybePromise<PluginResolution | null>;
 
-  /** Required when capabilities.lookAhead = true */
+  /** @deprecated use lookAhead */
   lookAheadItems?(ctx: PluginContext): MaybePromise<LookAheadItem[]>;
 };
 

@@ -1,5 +1,16 @@
-/** SF Symbol name, single emoji, or HTTPS URL — passed as plain string over XPC bridge. */
-export type PluginIcon = string;
+/** SF Symbol name, single emoji, HTTPS URL, or composite icon — passed over XPC bridge. */
+export type PluginIcon = string | PluginBadgedIcon | PluginRoundedIcon;
+
+export type PluginBadgedIcon = {
+  type: "badge";
+  base: PluginIcon;
+  badge: PluginIcon;
+};
+
+export type PluginRoundedIcon = {
+  type: "rounded";
+  base: PluginIcon;
+};
 
 export const Icon = {
   sfSymbol(name: string): PluginIcon {
@@ -12,5 +23,14 @@ export const Icon = {
 
   url(httpsUrl: string): PluginIcon {
     return httpsUrl;
+  },
+
+  withBadge(base: PluginIcon, badge: PluginIcon): PluginIcon {
+    return { type: "badge", base, badge };
+  },
+
+  /** Clip the icon to a circle. Works with any icon type. */
+  rounded(base: PluginIcon): PluginIcon {
+    return { type: "rounded", base };
   },
 };

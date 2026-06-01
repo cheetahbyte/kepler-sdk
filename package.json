@@ -1,17 +1,27 @@
 {
   "name": "@kepler-app/plugin-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TypeScript SDK for building Kepler plugins.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "bin": {
+    "kepler-plugin": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "runtime.d.ts"
+  ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run typecheck && pnpm run build"
   },
-  "keywords": ["kepler", "plugin", "sdk"],
+  "keywords": [
+    "kepler",
+    "plugin",
+    "sdk"
+  ],
   "author": "Leonhard Breuer",
   "license": "MIT",
   "repository": {
@@ -21,7 +31,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "jiti": "^2.7.0"
+  },
   "devDependencies": {
+    "@types/node": "^22.19.19",
     "tsup": "^8.0.0",
     "typescript": "~5.9.3"
   },

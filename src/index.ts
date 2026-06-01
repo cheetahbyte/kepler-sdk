@@ -7,3 +7,7 @@ export * from "./results";
 export * from "./resolve";
 export * from "./settings";
 export * from "./look-ahead";
+export * from "./query";
+export * from "./match";
+export * from "./contributions";
+export * from "./builders";
