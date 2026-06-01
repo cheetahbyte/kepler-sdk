@@ -1,7 +1,9 @@
 # Kepler Plugin SDK
 
 Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore: no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch` and `console`. Everything else is on you.
-
+## Example Projects
+- [Their Time Plugin](https://github.com/orbiq-one/kepler-their-time/)
+- [Github Issue Plugin](https://github.com/orbiq-one/kepler-github-issues/)
 ## Quick start
 
 Scaffold a new project and install the SDK:
