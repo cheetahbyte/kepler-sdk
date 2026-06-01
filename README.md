@@ -346,7 +346,7 @@ Storage is not the same as `settings`. Settings are user-controlled values that 
 
 ## Icons
 
-Icons can be SF Symbols, emoji, HTTPS image URLs, or composites:
+Icons can be SF Symbols, emoji, HTTPS image URLs, bundle-local assets, or composites:
 
 ```ts
 import { Icon } from "@kepler-app/plugin-sdk";
@@ -354,12 +354,15 @@ import { Icon } from "@kepler-app/plugin-sdk";
 Icon.sfSymbol("magnifyingglass")           // any SF Symbol name
 Icon.emoji("🔌")                           // single emoji character
 Icon.url("https://example.com/icon.png")   // remote image, cached by Kepler
+Icon.asset("icons/github.png")             // image bundled in the .keplugin directory
 Icon.rounded(Icon.url("https://..."))      // clip the icon to a circle
 Icon.withBadge(                             // overlay a badge icon on the bottom-right
   Icon.url("https://unavatar.io/x/laura"),
   Icon.emoji("🇩🇪"),
 )
 ```
+
+`Icon.asset` paths are relative to the `.keplugin` bundle. The image file must exist in the output directory next to `index.js` and `manifest.json`. Absolute paths and `../` traversal are rejected for security. Supported formats: PNG, JPEG, TIFF, GIF, HEIC.
 
 ## Actions and results
 

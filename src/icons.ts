@@ -1,5 +1,9 @@
-/** SF Symbol name, single emoji, HTTPS URL, or composite icon. Passed over XPC bridge. */
-export type PluginIcon = string | PluginBadgedIcon | PluginRoundedIcon;
+/** SF Symbol name, single emoji, HTTPS URL, bundle-local asset, or composite icon. Passed over XPC bridge. */
+export type PluginIcon =
+  | string
+  | PluginBadgedIcon
+  | PluginRoundedIcon
+  | PluginAssetIcon;
 
 export type PluginBadgedIcon = {
   type: "badge";
@@ -10,6 +14,11 @@ export type PluginBadgedIcon = {
 export type PluginRoundedIcon = {
   type: "rounded";
   base: PluginIcon;
+};
+
+export type PluginAssetIcon = {
+  type: "asset";
+  path: string;
 };
 
 export const Icon = {
@@ -29,8 +38,17 @@ export const Icon = {
     return { type: "badge", base, badge };
   },
 
-  /** Clip the icon to a circle. Works with any icon type. */
   rounded(base: PluginIcon): PluginIcon {
     return { type: "rounded", base };
+  },
+
+  /**
+   * Reference an image file inside the plugin bundle.
+   * The path is relative to the .keplugin directory and may contain subdirectories.
+   * Supported formats: PNG, JPEG, TIFF, GIF, HEIC.
+   * Absolute paths and path traversal (`../`) are rejected by the host.
+   */
+  asset(path: string): PluginIcon {
+    return { type: "asset", path };
   },
 };
