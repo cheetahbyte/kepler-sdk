@@ -1,7 +1,8 @@
 export type PluginAction =
   | { type: "open"; path: string }
   | { type: "copy"; value: string }
-  | { type: "url"; url: string };
+  | { type: "url"; url: string }
+  | { type: "appleScript"; script: string };
 
 export const Action = {
   open(path: string): PluginAction {
@@ -14,5 +15,9 @@ export const Action = {
 
   url(url: string): PluginAction {
     return { type: "url", url };
+  },
+
+  appleScript(script: string): PluginAction {
+    return { type: "appleScript", script };
   },
 };

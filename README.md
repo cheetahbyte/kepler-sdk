@@ -378,13 +378,16 @@ import { Action, Accessory } from "@kepler-app/plugin-sdk";
 }
 ```
 
-Three action types:
+Four action types:
 
 ```ts
-Action.open("/path/to/file")   // open a file or application
-Action.copy("text to copy")    // copy to clipboard
-Action.url("https://...")      // open in default browser
+Action.open("/path/to/file")                       // open a file or application
+Action.copy("text to copy")                        // copy to clipboard
+Action.url("https://...")                          // open in default browser
+Action.appleScript('tell app "Music" to playpause') // run AppleScript
 ```
+
+`Action.appleScript` requires `metadata.permissions: ["appleScript"]`. Without it, the action is ignored. macOS may show an Automation permission prompt the first time the script targets a specific app.
 
 Three accessory types:
 

@@ -154,7 +154,7 @@ async function manifest(entry: string, outPath: string | undefined): Promise<voi
   }
 }
 
-const VALID_PERMISSIONS = new Set(["network", "maps"]);
+const VALID_PERMISSIONS = new Set(["network", "maps", "appleScript"]);
 
 function validatePermissions(meta: Record<string, unknown>): string[] {
   const raw = meta.permissions;
@@ -164,7 +164,7 @@ function validatePermissions(meta: Record<string, unknown>): string[] {
   }
   for (const p of raw) {
     if (typeof p !== "string" || !VALID_PERMISSIONS.has(p)) {
-      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, maps`);
+      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, maps, appleScript`);
       process.exit(1);
     }
   }
