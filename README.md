@@ -1,6 +1,6 @@
 # Kepler Plugin SDK
 
-Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore — no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch` and `console`. Everything else is on you.
+Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore: no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch` and `console`. Everything else is on you.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ export default definePlugin({
 });
 ```
 
-Your `tsconfig.json` needs no DOM types — you're in a JSC host:
+Your `tsconfig.json` needs no DOM types since you're in a JSC host:
 
 ```json
 {
@@ -59,7 +59,7 @@ Your `tsconfig.json` needs no DOM types — you're in a JSC host:
 }
 ```
 
-Bundling to IIFE is mandatory — Kepler expects a global `KeplerPlugin` object:
+Bundling to IIFE is mandatory. Kepler expects a global `KeplerPlugin` object:
 
 ```ts
 // tsup.config.ts
@@ -89,11 +89,11 @@ That's it. Kepler picks up plugins from `~/Library/Application Support/Kepler/Pl
 
 A plugin is a default-exported object from `definePlugin()`. It has two layers:
 
-**Metadata** — the static description. `id`, `name`, `version`, `author`, `icon`, capabilities the CLI infers from your contributions, `settings`, `permissions`, and `networkUrls`. This gets serialized into `manifest.json` and tells Kepler who you are and what you need.
+**Metadata** is the static description. `id`, `name`, `version`, `author`, `icon`, capabilities the CLI infers from your contributions, `settings`, `permissions`, and `networkUrls`. This gets serialized into `manifest.json` and tells Kepler who you are and what you need.
 
-**Contributions** — the four things your plugin actually does: `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. Each is an array of objects with `id`, `title`, and a `run()` function. These are what Kepler calls at runtime.
+**Contributions** are the four things your plugin actually does: `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. Each is an array of objects with `id`, `title`, and a `run()` function. These are what Kepler calls at runtime.
 
-The CLI reads your TypeScript source, detects which contributions you've defined, and writes a `manifest.json` with the right `capabilities` flags. You don't manually set `hasSearchMode: true` — if you have `searchModes`, it's on.
+The CLI reads your TypeScript source, detects which contributions you've defined, and writes a `manifest.json` with the right `capabilities` flags. You don't manually set `hasSearchMode: true`. If you have `searchModes`, it's on.
 
 ## Metadata
 
@@ -128,7 +128,7 @@ capabilities: {
 
 A search mode is an explicit activation surface. Users type a slash-prefix like `/tz ` or pick the mode from the search mode list. Once activated, your plugin owns the launcher until the user dismisses it.
 
-Each search mode can declare a `shortcutPrefix` — a word the user types after `/` to jump straight into that mode. The space is required after the prefix, so `/tz ` activates but `/tz` with no space doesn't. This means short prefixes like `f` don't collide with plugins that start with `foobar`.
+Each search mode can declare a `shortcutPrefix`, a word the user types after `/` to jump straight into that mode. The space is required after the prefix, so `/tz ` activates but `/tz` with no space doesn't. This means short prefixes like `f` don't collide with plugins that start with `foobar`.
 
 ```ts
 searchModes: [
@@ -138,24 +138,24 @@ searchModes: [
     keywords: ["find", "search"],
     shortcutPrefix: "f",
     run(query, ctx) {
-      // query.raw   — the text the user typed
-      // query.tokens — lowercase whitespace-split tokens
-      // ctx.now     — ISO 8601 timestamp
-      // ctx.locale  — e.g. "en_US"
-      // ctx.settings — resolved setting values keyed by setting id
+      // query.raw   - the text the user typed
+      // query.tokens - lowercase whitespace-split tokens
+      // ctx.now     - ISO 8601 timestamp
+      // ctx.locale  - e.g. "en_US"
+      // ctx.settings - resolved setting values keyed by setting id
       return results;
     },
   }),
 ]
 ```
 
-A single plugin can expose multiple search modes with different shortcut prefixes. `Command.search()` is just an identity helper — it returns whatever you pass in, giving you autocomplete.
+A single plugin can expose multiple search modes with different shortcut prefixes. `Command.search()` is just an identity helper. It returns whatever you pass in, giving you autocomplete.
 
 ## Search providers
 
 Global search providers contribute results to Kepler's unfiltered results list. They run in the background and should only return items when they're confident the query is relevant.
 
-The match function lets you skip expensive work — if `match` returns `null` or `Match.none`, your provider's `run` isn't called at all.
+The match function lets you skip expensive work. If `match` returns `null` or `Match.none`, your provider's `run` isn't called at all.
 
 ```ts
 import { Provider, Match } from "@kepler-app/plugin-sdk";
@@ -251,15 +251,15 @@ A **message** shows freeform text. Good for status, tips, or when nothing else f
 Confidence constants:
 
 ```ts
-Confidence.exact   // 1.0 — the query unambiguously matches this widget
-Confidence.strong  // 0.8 — highly likely match
-Confidence.medium  // 0.5 — reasonable match
-Confidence.weak    // 0.25 — plausible but not certain
+Confidence.exact   // 1.0 - the query unambiguously matches this widget
+Confidence.strong  // 0.8 - highly likely match
+Confidence.medium  // 0.5 - reasonable match
+Confidence.weak    // 0.25 - plausible but not certain
 ```
 
 ## Look ahead
 
-Not yet wired for JS plugins. The type is defined so you can start building — when the native side gets a look-ahead bridge, existing plugins won't need changes.
+Not yet wired for JS plugins. The type is defined so you can start building now. When the native side gets a look-ahead bridge, existing plugins won't need changes.
 
 ```ts
 import { LookAhead } from "@kepler-app/plugin-sdk";
@@ -284,9 +284,10 @@ ctx.locale    // string, e.g. "en_US"
 ctx.now       // string, ISO 8601 timestamp of current time
 ctx.settings  // Record<string, string | number | boolean | Array<Record<string, string>>>
               // resolved setting values, keyed by setting id. Falls back to each setting's defaultValue
+ctx.storage   // PluginStorage, see the Storage section below
 ```
 
-`fetch()` is available as a global — no import needed. It's a polyfill provided by the host, not the browser version. It returns a `KeplerResponse` with `ok`, `status`, `headers` (as a plain object), `.text()`, and `.json()`. No `Blob`, no `FormData`, no streaming. Text/JSON bodies only.
+`fetch()` is available as a global. No import needed. It's a polyfill provided by the host, not the browser version. It returns a `KeplerResponse` with `ok`, `status`, `headers` (as a plain object), `.text()`, and `.json()`. No `Blob`, no `FormData`, no streaming. Text/JSON bodies only.
 
 ## Settings
 
@@ -310,7 +311,36 @@ settings: [
 ]
 ```
 
-The `place` field kind is special — when the user picks a location, Kepler resolves it through MapKit and enriches the stored object with `City`, `Country`, `CountryCode`, and `TimeZone` suffixes on the field ID. So if your field is `location`, you get `locationCity`, `locationCountry`, `locationCountryCode`, and `locationTimeZone` alongside the raw `location` value.
+The `place` field kind is special. When the user picks a location, Kepler resolves it through MapKit and enriches the stored object with `City`, `Country`, `CountryCode`, and `TimeZone` suffixes on the field ID. So if your field is `location`, you get `locationCity`, `locationCountry`, `locationCountryCode`, and `locationTimeZone` alongside the raw `location` value.
+
+## Storage
+
+Plugins have a private key-value store that persists across launches. Each plugin only sees its own keys. Values are JSON only: strings, numbers, booleans, null, arrays, and plain objects. Functions, Dates, and circular references are not supported.
+
+Use it for caches, auth tokens, recent selections, or anything else your plugin needs to remember:
+
+```ts
+run(query, ctx) {
+  const cached = ctx.storage.get<{ updatedAt: string; items: string[] }>("cache");
+  if (cached && cached.updatedAt === ctx.now.slice(0, 10)) {
+    return cached.items.map(id => ({ id, title: id, action: Action.open(id) }));
+  }
+
+  const items = fetchItems(query.raw);
+  ctx.storage.set("cache", { updatedAt: ctx.now.slice(0, 10), items });
+  return items.map(id => ({ id, title: id, action: Action.open(id) }));
+}
+```
+
+The API is intentionally small:
+
+```ts
+ctx.storage.get(key: string): T | null     // read a value, null if missing
+ctx.storage.set(key: string, value: T)      // write a value, overwrites existing
+ctx.storage.delete(key: string)             // remove a key, no-op if missing
+```
+
+Storage is not the same as `settings`. Settings are user-controlled values that appear in Kepler's preferences UI. Storage is plugin-controlled state that the user never sees. Do not store secrets in plain text; the store is not encrypted.
 
 ## Icons
 
@@ -373,20 +403,20 @@ metadata: {
 }
 ```
 
-Domains are validated by the CLI — only bare hostnames, no protocols or paths. Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too.
+Domains are validated by the CLI. Only bare hostnames, no protocols or paths. Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too.
 
-The host `fetch` has a 10-second timeout. It rejects on network, DNS, or TLS failure. HTTP responses that aren't in the 200–299 range still resolve — check `res.ok`. The function signature matches what you'd expect, but the returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance.
+The host `fetch` has a 10-second timeout. It rejects on network, DNS, or TLS failure. HTTP responses that aren't in the 200-299 range still resolve, so check `res.ok`. The function signature matches what you'd expect, but the returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance.
 
 ## Runtime limitations
 
 Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically:
 
-- **No DOM** — no `document`, no `window`, no `localStorage`
-- **No Node APIs** — no `require`, no `fs`, no `process`, no `Buffer`
-- **No timers** — no `setTimeout`, no `setInterval`. Async work must use Promises and `fetch`
-- **No module system** — your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
-- **JSON only** — all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
-- **`fetch` is host-provided** — it handles HTTPS only, text/JSON bodies only, and has a 10-second timeout
+- **No DOM:** no `document`, no `window`. `localStorage` doesn't exist; use `ctx.storage` instead
+- **No Node APIs:** no `require`, no `fs`, no `process`, no `Buffer`
+- **No timers:** no `setTimeout`, no `setInterval`. Async work must use Promises and `fetch`
+- **No module system:** your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
+- **JSON only:** all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
+- **`fetch` is host-provided:** it handles HTTPS only, text/JSON bodies only, and has a 10-second timeout
 
 ## CLI reference
 
@@ -419,12 +449,12 @@ What gets written:
 
 **Putting shortcutPrefix on the plugin instead of the search mode.** Each search mode has its own prefix. The plugin itself doesn't have one.
 
-**Forgetting networkUrls when using fetch.** If you add `permissions: ["network"]`, you need `networkUrls` too — at least one domain. The CLI enforces this.
+**Forgetting networkUrls when using fetch.** If you add `permissions: ["network"]`, you need `networkUrls` too. At least one domain. The CLI enforces this.
 
-**Relying on browser or Node globals.** `setTimeout` doesn't exist. `localStorage` doesn't exist. `process.env` doesn't exist. If you need async delays, use Promise chains.
+**Relying on browser or Node globals.** `setTimeout` doesn't exist. `localStorage` doesn't exist; use `ctx.storage` instead. `process.env` doesn't exist. If you need async delays, use Promise chains.
 
 **Not bundling to IIFE.** Kepler evaluates your script and looks for a global `KeplerPlugin` object. If you emit ESM or CJS, it won't find anything.
 
-**Returning non-serializable values.** `undefined`, functions, Symbols, circular objects — these either vanish or crash. Stick to plain objects, arrays, strings, numbers, and booleans.
+**Returning non-serializable values.** `undefined`, functions, Symbols, circular objects: these either vanish or crash. Stick to plain objects, arrays, strings, numbers, and booleans.
 
 **Colliding shortcut prefixes.** If two enabled search modes share the same `shortcutPrefix`, only the first one will activate. Keep prefixes unique across all installed plugins.

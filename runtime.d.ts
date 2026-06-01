@@ -2,7 +2,7 @@
 //
 // The host injects ONLY `fetch` and `console`. There is no DOM, no Node, no
 // timers (`setTimeout`/`setInterval`), no `Buffer`/`process`, and no module
-// system at runtime — plugins are pre-bundled to a single script.
+// system at runtime. Plugins are pre-bundled to a single script.
 //
 // Compile plugins with `"lib": ["ES2022"]` and `"types": []` so these globals
 // describe what actually exists instead of the fuller browser/Node typings.
@@ -17,7 +17,7 @@ interface KeplerResponse {
   readonly url: string;
   /**
    * Response headers as a plain object with lowercased keys.
-   * This is NOT a `Headers` instance — use `res.headers["content-type"]`.
+   * This is NOT a `Headers` instance. Use `res.headers["content-type"]`.
    */
   readonly headers: Record<string, string>;
   /** Resolves with the response body decoded as UTF-8 text. */

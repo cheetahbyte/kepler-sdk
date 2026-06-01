@@ -1,4 +1,4 @@
-/** SF Symbol name, single emoji, HTTPS URL, or composite icon — passed over XPC bridge. */
+/** SF Symbol name, single emoji, HTTPS URL, or composite icon. Passed over XPC bridge. */
 export type PluginIcon = string | PluginBadgedIcon | PluginRoundedIcon;
 
 export type PluginBadgedIcon = {

@@ -16,7 +16,12 @@ export type PluginContext = {
    * ```
    */
   settings: Record<string, string | number | boolean | Array<Record<string, string>>>;
-  /** `fetch()` is available as a global polyfill — no import needed. */
+  /** `fetch()` is available as a global polyfill. No import needed. */
+  /**
+   * Persistent per-plugin key-value storage. Values are JSON-serialized and kept
+   * in the app's sandbox. Each plugin only sees its own keys.
+   */
+  storage: PluginStorage;
 };
 
 /** Result of resolving a city + country to a timezone via MapKit. */
@@ -27,15 +32,25 @@ export interface ResolvedPlace {
   timeZone: string;
 }
 
+/** Values that can be stored and retrieved via `ctx.storage`. */
+export type PluginStorageValue =
+  | string
+  | number
+  | boolean
+  | null
+  | PluginStorageValue[]
+  | { [key: string]: PluginStorageValue };
+
 /**
- * Persistent per-plugin key-value storage.
- *
- * NOTE: not yet available inside the JavaScriptCore host — `ctx` currently
- * exposes `settings` only. This type is reserved for a future host that
- * bridges storage back to the app.
+ * Persistent per-plugin key-value storage bridged from the native host.
+ * Values are JSON only: strings, numbers, booleans, null, arrays, and plain
+ * objects. Functions, Dates, and circular references are not supported.
  */
 export interface PluginStorage {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T): Promise<void>;
-  delete(key: string): Promise<void>;
+  /** Read a value. Returns `null` if the key doesn't exist. */
+  get<T extends PluginStorageValue = PluginStorageValue>(key: string): T | null;
+  /** Write a value. Overwrites any existing value. */
+  set<T extends PluginStorageValue>(key: string, value: T): void;
+  /** Remove a key. No-op if the key doesn't exist. */
+  delete(key: string): void;
 }
