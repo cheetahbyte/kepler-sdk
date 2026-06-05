@@ -11,3 +11,4 @@ export * from "./query";
 export * from "./match";
 export * from "./contributions";
 export * from "./builders";
+export * from "./shortcuts";

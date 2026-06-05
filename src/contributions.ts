@@ -35,6 +35,10 @@ export type PluginResolver = {
 export type PluginLookAhead = {
   id: string;
   title?: string;
+  subtitle?: string;
+  keywords?: string[];
+  icon?: PluginIcon;
+  shortcutPrefix?: string;
   run(ctx: PluginContext): MaybePromise<LookAheadItem[]>;
 };
 

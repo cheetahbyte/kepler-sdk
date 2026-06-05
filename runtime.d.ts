@@ -1,8 +1,8 @@
 // Ambient declarations for the Kepler plugin runtime (a JavaScriptCore host).
 //
-// The host injects ONLY `fetch` and `console`. There is no DOM, no Node, no
-// timers (`setTimeout`/`setInterval`), no `Buffer`/`process`, and no module
-// system at runtime. Plugins are pre-bundled to a single script.
+// The host injects ONLY `fetch`, `XMLHttpRequest`, and `console`. There is no
+// DOM, no Node, no timers (`setTimeout`/`setInterval`), no `Buffer`/`process`,
+// and no module system at runtime. Plugins are pre-bundled to a single script.
 //
 // Compile plugins with `"lib": ["ES2022"]` and `"types": []` so these globals
 // describe what actually exists instead of the fuller browser/Node typings.
@@ -50,3 +50,29 @@ declare const console: {
   error(...args: unknown[]): void;
   info(...args: unknown[]): void;
 };
+
+/**
+ * Host `XMLHttpRequest`. Async only — synchronous requests throw.
+ * Same host/permission gating as `fetch`.
+ * @example
+ * const xhr = new XMLHttpRequest();
+ * xhr.open("GET", "https://api.example.com/data");
+ * xhr.onload = () => console.log(xhr.responseText);
+ * xhr.send();
+ */
+declare class XMLHttpRequest {
+  /** UNSENT = 0 */
+  readonly readyState: number;
+  readonly status: number;
+  readonly responseText: string;
+  readonly response: string;
+  onload: (() => void) | null;
+  onerror: (() => void) | null;
+
+  open(method: string, url: string, async?: boolean): void;
+  setRequestHeader(name: string, value: string): void;
+  send(body?: string | Record<string, unknown> | unknown[]): void;
+  getAllResponseHeaders(): string;
+  getResponseHeader(name: string): string | null;
+  abort(): void;
+}

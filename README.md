@@ -1,6 +1,6 @@
 # Kepler Plugin SDK
 
-Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore: no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch` and `console`. Everything else is on you.
+Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore: no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch`, `XMLHttpRequest`, and `console`. Everything else is on you.
 ## Example Projects
 - [Their Time Plugin](https://github.com/orbiq-one/kepler-their-time/)
 - [Github Issue Plugin](https://github.com/orbiq-one/kepler-github-issues/)
@@ -303,14 +303,17 @@ lookAhead: [
 Every `run()` and `match()` receives a context object:
 
 ```ts
-ctx.locale    // string, e.g. "en_US"
-ctx.now       // string, ISO 8601 timestamp of current time
-ctx.settings  // Record<string, string | number | boolean | Array<Record<string, string>>>
-              // resolved setting values, keyed by setting id. Falls back to each setting's defaultValue
-ctx.storage   // PluginStorage, see the Storage section below
+ctx.locale       // string, e.g. "en_US"
+ctx.now          // string, ISO 8601 timestamp of current time
+ctx.settings     // Record<string, string | number | boolean | Array<Record<string, string>>>
+                 // resolved setting values, keyed by setting id. Falls back to each setting's defaultValue
+ctx.storage      // PluginStorage, see the Storage section below
+ctx.appleScript  // AppleScript bridge — requires the "appleScript" permission
 ```
 
 `fetch()` is available as a global. No import needed. It's a polyfill provided by the host, not the browser version. It returns a `KeplerResponse` with `ok`, `status`, `headers` (as a plain object), `.text()`, and `.json()`. No `Blob`, no `FormData`, no streaming. Text/JSON bodies only.
+
+`XMLHttpRequest` is also available globally, with the same network permission/domain gating as `fetch`. Async only — synchronous requests throw. Use it when you need progress events or compatibility with existing libraries.
 
 ## Settings
 
@@ -335,6 +338,30 @@ settings: [
 ```
 
 The `place` field kind is special. When the user picks a location, Kepler resolves it through MapKit and enriches the stored object with `City`, `Country`, `CountryCode`, and `TimeZone` suffixes on the field ID. So if your field is `location`, you get `locationCity`, `locationCountry`, `locationCountryCode`, and `locationTimeZone` alongside the raw `location` value.
+
+## Shortcuts
+
+Plugins can declare keyboard shortcuts — search prefixes or global hotkeys — to quickly activate features. Declare them in `metadata.shortcuts`:
+
+```ts
+import { Shortcut } from "@kepler-app/plugin-sdk";
+
+metadata: {
+  shortcuts: [
+    Shortcut.activateSearchMode(
+      Shortcut.searchPrefix("g", "GitHub", "gh"),
+      "issue_search"
+    ),
+    Shortcut.globalHotkey("open", "Open Kepler", "space", ["command", "option"], {
+      description: "Open the launcher from anywhere",
+    }),
+  ],
+}
+```
+
+Search prefix shortcuts let users type a word after `/` to jump into a specific search mode. For example, if a search mode has prefix `gh`, typing `/gh ` (with a trailing space) activates it immediately.
+
+Global hotkey shortcuts register system-wide keyboard shortcuts. The `key` is a lowercase key name (`"a"`–`"z"`, `"0"`–`"9"`, `"space"`, `"return"`, `"escape"`, `"tab"`, `"delete"`, `"f1"`–`"f12"`, `"upArrow"`, `"downArrow"`, `"leftArrow"`, `"rightArrow"`). Modifiers are an array of `"command"`, `"option"`, `"shift"`, or `"control"`.
 
 ## Storage
 
@@ -413,6 +440,8 @@ Action.appleScript('tell app "Music" to playpause') // run AppleScript
 
 `Action.appleScript` requires `metadata.permissions: ["appleScript"]`. Without it, the action is ignored. macOS may show an Automation permission prompt the first time the script targets a specific app.
 
+For ad-hoc AppleScript execution from your `run()` body (not tied to a user action), use `ctx.appleScript.run(script)` instead. It returns a promise and works identically to `Action.appleScript` under the hood.
+
 Three accessory types:
 
 ```ts
@@ -434,7 +463,7 @@ metadata: {
 
 Domains are validated by the CLI. Only bare hostnames, no protocols or paths. Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too.
 
-The host `fetch` has a 10-second timeout. It rejects on network, DNS, or TLS failure. HTTP responses that aren't in the 200-299 range still resolve, so check `res.ok`. The function signature matches what you'd expect, but the returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance.
+Both `fetch` and `XMLHttpRequest` share the same 10-second timeout and permission/domain gating. `fetch` rejects on network, DNS, or TLS failure; HTTP responses outside 200–299 still resolve, so check `res.ok`. The function signature matches what you'd expect, but the returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance.
 
 ## Runtime limitations
 
@@ -445,7 +474,7 @@ Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically
 - **No timers:** no `setTimeout`, no `setInterval`. Async work must use Promises and `fetch`
 - **No module system:** your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
 - **JSON only:** all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
-- **`fetch` is host-provided:** it handles HTTPS only, text/JSON bodies only, and has a 10-second timeout
+- **`fetch` and `XMLHttpRequest` are host-provided:** HTTPS/HTTP only, text/JSON bodies only, 10-second timeout
 
 ## CLI reference
 

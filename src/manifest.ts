@@ -1,5 +1,6 @@
 import type { PluginSettingDefinition } from "./settings";
 import type { PluginIcon } from "./icons";
+import type { PluginShortcutDefinition } from "./shortcuts";
 
 export type PluginPermission = "network" | "maps" | "appleScript";
 
@@ -37,6 +38,10 @@ export type PluginWidgetDescriptor = {
 export type PluginLookAheadDescriptor = {
   id: string;
   title?: string;
+  subtitle?: string;
+  keywords?: string[];
+  icon?: PluginIcon;
+  shortcutPrefix?: string;
 };
 
 export type PluginContributionsDescriptor = {
@@ -59,6 +64,8 @@ export type PluginManifest = {
   capabilities: PluginCapabilities;
   contributions?: PluginContributionsDescriptor;
   settings?: PluginSettingDefinition[];
+  /** Declared keyboard shortcuts (search prefixes or global hotkeys). */
+  shortcuts?: PluginShortcutDefinition[];
   /** Sensitive resources the plugin may access. */
   permissions: PluginPermission[];
   /** Base domains the plugin may contact via fetch()/XHR. Subdomains are allowed. */

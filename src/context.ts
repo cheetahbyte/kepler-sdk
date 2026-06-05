@@ -22,6 +22,15 @@ export type PluginContext = {
    * in the app's sandbox. Each plugin only sees its own keys.
    */
   storage: PluginStorage;
+  /**
+   * AppleScript execution bridge. Requires `metadata.permissions: ["appleScript"]`.
+   * If the permission is missing, `run()` will reject.
+   *
+   * ```ts
+   * const result = await ctx.appleScript.run(`tell app "Finder" to name of every disk`);
+   * ```
+   */
+  appleScript: PluginAppleScript;
 };
 
 /** Result of resolving a city + country to a timezone via MapKit. */
@@ -53,4 +62,16 @@ export interface PluginStorage {
   set<T extends PluginStorageValue>(key: string, value: T): void;
   /** Remove a key. No-op if the key doesn't exist. */
   delete(key: string): void;
+}
+
+/**
+ * AppleScript execution bridge.
+ * Requires the plugin to declare `metadata.permissions: ["appleScript"]`.
+ */
+export interface PluginAppleScript {
+  /**
+   * Execute an AppleScript and return its result as a string.
+   * Rejects if the script fails or if the `appleScript` permission is missing.
+   */
+  run(script: string): Promise<string>;
 }

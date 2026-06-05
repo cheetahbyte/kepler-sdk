@@ -119,7 +119,12 @@ async function handleBundle(args: string[]): Promise<void> {
 
   // Copy assets.
   if (assetsDir) {
-    copyAssets(resolve(assetsDir), outDir);
+    const resolvedAssets = resolve(assetsDir);
+    if (existsSync(resolvedAssets)) {
+      copyAssets(resolvedAssets, outDir);
+    } else {
+      console.warn(`\nWarning: assets directory not found: ${assetsDir}`);
+    }
   }
 
   console.log(`\nWrote plugin to ${outDir}`);
@@ -260,6 +265,11 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
     output.settings = meta.settings;
   }
 
+  const shortcuts = validateShortcuts(meta);
+  if (shortcuts.length > 0) {
+    output.shortcuts = shortcuts;
+  }
+
   return output;
 }
 
@@ -296,6 +306,40 @@ function normalizeDomain(raw: string): string | null {
     return null;
   }
   return domain;
+}
+
+function validateShortcuts(meta: Record<string, unknown>): Record<string, unknown>[] {
+  const raw = meta.shortcuts;
+  if (!Array.isArray(raw)) return [];
+  const validKinds = new Set(["searchPrefix", "globalHotkey"]);
+  return raw.filter((s): s is Record<string, unknown> => {
+    if (!s || typeof s !== "object") return false;
+    const obj = s as Record<string, unknown>;
+    if (typeof obj.id !== "string" || !obj.id) return false;
+    if (typeof obj.title !== "string" || !obj.title) return false;
+    if (typeof obj.kind !== "string" || !validKinds.has(obj.kind)) {
+      console.error(`shortcut "${obj.id}": kind must be "searchPrefix" or "globalHotkey"`);
+      return false;
+    }
+    if (obj.defaultValue != null) {
+      if (obj.kind === "searchPrefix" && typeof obj.defaultValue !== "string") {
+        console.error(`shortcut "${obj.id}": searchPrefix defaultValue must be a string`);
+        return false;
+      }
+      if (obj.kind === "globalHotkey") {
+        if (typeof obj.defaultValue !== "object" || obj.defaultValue == null) {
+          console.error(`shortcut "${obj.id}": globalHotkey defaultValue must be an object with key and modifiers`);
+          return false;
+        }
+        const dv = obj.defaultValue as Record<string, unknown>;
+        if (typeof dv.key !== "string" || !Array.isArray(dv.modifiers) || !dv.modifiers.every(m => typeof m === "string")) {
+          console.error(`shortcut "${obj.id}": globalHotkey defaultValue requires key (string) and modifiers (string[])`);
+          return false;
+        }
+      }
+    }
+    return true;
+  });
 }
 
 function validateNetworkUrls(meta: Record<string, unknown>, permissions: string[]): string[] {

@@ -2,7 +2,7 @@ export type PluginQuery = {
   raw: string;
   normalized: string;
   tokens: string[];
-  source: "global" | "command" | "resolver" | "lookAhead";
+  source: "global" | "searchMode" | "widget" | "lookAhead";
   locale?: string;
 };
 
