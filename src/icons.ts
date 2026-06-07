@@ -3,7 +3,8 @@ export type PluginIcon =
   | string
   | PluginBadgedIcon
   | PluginRoundedIcon
-  | PluginAssetIcon;
+  | PluginAssetIcon
+  | PluginAppIcon;
 
 export type PluginBadgedIcon = {
   type: "badge";
@@ -18,6 +19,11 @@ export type PluginRoundedIcon = {
 
 export type PluginAssetIcon = {
   type: "asset";
+  path: string;
+};
+
+export type PluginAppIcon = {
+  type: "appIcon";
   path: string;
 };
 
@@ -50,5 +56,13 @@ export const Icon = {
    */
   asset(path: string): PluginIcon {
     return { type: "asset", path };
+  },
+
+  /**
+   * Reference a macOS application icon by its absolute file path.
+   * @example Icon.appIcon("/Applications/Safari.app")
+   */
+  appIcon(path: string): PluginIcon {
+    return { type: "appIcon", path };
   },
 };

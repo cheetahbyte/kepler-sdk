@@ -1,11 +1,12 @@
 import type { PluginContext } from "./context";
-import type { PluginListItem } from "./results";
+import type { PluginListItem, PluginResultItem } from "./results";
 import type { PluginResolution } from "./resolve";
 import type { LookAheadItem } from "./look-ahead";
 import type { MaybePromise } from "./plugin";
 import type { PluginQuery } from "./query";
 import type { PluginMatch } from "./match";
 import type { PluginIcon } from "./icons";
+import type { PluginCommandDescriptor } from "./manifest";
 
 export type PluginCommand = {
   id: string;
@@ -15,6 +16,22 @@ export type PluginCommand = {
   icon?: PluginIcon;
   shortcutPrefix?: string;
   run(query: PluginQuery, ctx: PluginContext): MaybePromise<PluginListItem[]>;
+  sectionedResults?(
+    query: PluginQuery,
+    ctx: PluginContext
+  ): MaybePromise<PluginResultItem[]>;
+};
+
+/**
+ * Optional interface for plugins that need to return structured rows (widgets, galleries)
+ * from a search mode instead of flat list items.
+ */
+export type SearchModeSectionPlugin = {
+  sectionedResults(
+    searchMode: PluginCommandDescriptor,
+    query: PluginQuery,
+    ctx: PluginContext
+  ): MaybePromise<PluginResultItem[]>;
 };
 
 export type PluginProvider = {

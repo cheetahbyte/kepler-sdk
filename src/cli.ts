@@ -231,6 +231,11 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const lookAheadDesc = (lookAheadArr ?? []).map((l) => ({
     id: l.id,
     ...(l.title != null ? { title: l.title } : {}),
+    ...(l.subtitle != null ? { subtitle: l.subtitle } : {}),
+    ...(Array.isArray(l.keywords) && l.keywords.length > 0
+      ? { keywords: l.keywords }
+      : {}),
+    ...(l.icon != null ? { icon: l.icon } : {}),
   }));
 
   const hasAnyContribution =

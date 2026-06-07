@@ -5,5 +5,5 @@ export type LookAheadItem = {
   title: string;
   subtitle?: string;
   icon?: PluginIcon;
-  kind: "event" | "reminder" | "generic";
+  kind: "event" | "reminder" | "generic" | "plugin";
 };
