@@ -16,6 +16,9 @@ export type PluginShortcutDefinition = {
   kind: PluginShortcutKind;
   defaultValue?: PluginShortcutDefaultValue;
   action?: PluginShortcutAction;
+  /** When true, the host only fires the shortcut if there is selected text,
+   *  passing it to the activated search mode. Defaults to false. */
+  requiresSelectedText?: boolean;
 };
 
 export const Shortcut = {
@@ -41,8 +44,15 @@ export const Shortcut = {
 
   activateSearchMode(
     shortcut: PluginShortcutDefinition,
-    searchModeID?: string
+    searchModeID?: string,
+    opts?: { requiresSelectedText?: boolean }
   ): PluginShortcutDefinition {
-    return { ...shortcut, action: { type: "activateSearchMode", searchModeID } };
+    return {
+      ...shortcut,
+      action: { type: "activateSearchMode", searchModeID },
+      ...(opts?.requiresSelectedText != null
+        ? { requiresSelectedText: opts.requiresSelectedText }
+        : {}),
+    };
   },
 };

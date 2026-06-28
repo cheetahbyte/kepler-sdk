@@ -1,6 +1,6 @@
 import type { PluginAction } from "./actions";
 import type { PluginIcon } from "./icons";
-import type { PluginResolution } from "./resolve";
+import type { PluginResolvedView } from "./resolve";
 
 export type PluginListItem = {
   id: string;
@@ -56,7 +56,10 @@ export type PluginResultRow =
 
 export type PluginWidgetRow = {
   id: string;
-  view: PluginResolution;
+  /** The widget view rendered inline. The host reads `confidence` as a sibling
+   *  field, not nested inside the view (unlike a top-level `widgets` resolver). */
+  view: PluginResolvedView;
+  confidence?: number;
 };
 
 // MARK: - Gallery

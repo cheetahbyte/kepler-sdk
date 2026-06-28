@@ -172,13 +172,25 @@ searchModes: [
 ]
 ```
 
+A search mode can set a `placeholder` string, shown in the search bar while that mode is active. When omitted, Kepler falls back to `Search <name>…`.
+
+```ts
+Command.search({
+  id: "files",
+  title: "Files",
+  shortcutPrefix: "f",
+  placeholder: "Search files by name…",
+  run(query, ctx) { return results; },
+})
+```
+
 A single plugin can expose multiple search modes with different shortcut prefixes. `Command.search()` is just an identity helper. It returns whatever you pass in, giving you autocomplete.
 
 ## Search providers
 
 Global search providers contribute results to Kepler's unfiltered results list. They run in the background and should only return items when they're confident the query is relevant.
 
-The match function lets you skip expensive work. If `match` returns `null` or `Match.none`, your provider's `run` isn't called at all.
+The match function lets you skip expensive work. If `match` returns `null` or `Match.none`, your provider's `run` isn't called at all. `match` receives only the query — no context object is passed.
 
 ```ts
 import { Provider, Match } from "@kepler-app/plugin-sdk";
@@ -187,7 +199,7 @@ searchProviders: [
   Provider.results({
     id: "docs",
     title: "Docs Search",
-    match(query, ctx) {
+    match(query) {
       if (query.raw.length < 3) return Match.none;
       if (query.raw.match(/^doc|^wiki/i)) return Match.strong;
       return Match.none;
@@ -228,7 +240,7 @@ widgets: [
     id: "convert",
     title: "Unit Converter",
     priorityBias: 0.1,
-    match(query, ctx) {
+    match(query) {
       if (query.raw.match(/^\d+\s*(usd|eur|cm|in)/i)) return Match.exact(1.0);
       return Match.none;
     },
@@ -300,7 +312,7 @@ lookAhead: [
 
 ## Context
 
-Every `run()` and `match()` receives a context object:
+Every `run()` receives a context object. (`match()` on search providers and widgets does not — it gets the query only.)
 
 ```ts
 ctx.locale       // string, e.g. "en_US"
@@ -362,6 +374,16 @@ metadata: {
 Search prefix shortcuts let users type a word after `/` to jump into a specific search mode. For example, if a search mode has prefix `gh`, typing `/gh ` (with a trailing space) activates it immediately.
 
 Global hotkey shortcuts register system-wide keyboard shortcuts. The `key` is a lowercase key name (`"a"`–`"z"`, `"0"`–`"9"`, `"space"`, `"return"`, `"escape"`, `"tab"`, `"delete"`, `"f1"`–`"f12"`, `"upArrow"`, `"downArrow"`, `"leftArrow"`, `"rightArrow"`). Modifiers are an array of `"command"`, `"option"`, `"shift"`, or `"control"`.
+
+`Shortcut.activateSearchMode` takes an optional third argument. Pass `{ requiresSelectedText: true }` to only fire the shortcut when there is selected text, which Kepler passes into the activated search mode. Defaults to `false`.
+
+```ts
+Shortcut.activateSearchMode(
+  Shortcut.globalHotkey("translate", "Translate Selection", "t", ["command", "shift"]),
+  "translate",
+  { requiresSelectedText: true }
+)
+```
 
 ## Storage
 
@@ -512,7 +534,7 @@ What gets written:
 | `permissions` | From `metadata.permissions` (validated) |
 | `networkUrls` | From `metadata.networkUrls` (validated, normalized to bare hostnames) |
 | `settings` | From `metadata.settings` (optional) |
-| `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `keywords`, `icon`, `shortcutPrefix` |
+| `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `keywords`, `icon`, `shortcutPrefix`, `placeholder` |
 | `contributions.searchProviders[]` | From `searchProviders` array |
 | `contributions.widgets[]` | From `widgets` array, with `id`, `title`, `priorityBias` |
 | `contributions.lookAhead[]` | From `lookAhead` array |

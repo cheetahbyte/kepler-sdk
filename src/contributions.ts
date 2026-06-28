@@ -15,6 +15,9 @@ export type PluginCommand = {
   keywords?: string[];
   icon?: PluginIcon;
   shortcutPrefix?: string;
+  /** Search bar placeholder shown when this mode is active.
+   *  Falls back to "Search <name>…" when omitted. */
+  placeholder?: string;
   run(query: PluginQuery, ctx: PluginContext): MaybePromise<PluginListItem[]>;
   sectionedResults?(
     query: PluginQuery,
@@ -37,7 +40,8 @@ export type SearchModeSectionPlugin = {
 export type PluginProvider = {
   id: string;
   title?: string;
-  match?(query: PluginQuery, ctx: PluginContext): MaybePromise<PluginMatch>;
+  /** The host invokes `match` with the query only — no context is passed. */
+  match?(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginListItem[]>;
 };
 
@@ -45,7 +49,8 @@ export type PluginResolver = {
   id: string;
   title?: string;
   priorityBias?: number;
-  match?(query: PluginQuery, ctx: PluginContext): MaybePromise<PluginMatch>;
+  /** The host invokes `match` with the query only — no context is passed. */
+  match?(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginResolution | null>;
 };
 
@@ -56,6 +61,7 @@ export type PluginLookAhead = {
   keywords?: string[];
   icon?: PluginIcon;
   shortcutPrefix?: string;
+  placeholder?: string;
   run(ctx: PluginContext): MaybePromise<LookAheadItem[]>;
 };
 

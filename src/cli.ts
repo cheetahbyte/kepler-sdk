@@ -213,6 +213,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
       : {}),
     ...(c.icon != null ? { icon: c.icon } : {}),
     ...(c.shortcutPrefix != null ? { shortcutPrefix: c.shortcutPrefix } : {}),
+    ...(c.placeholder != null ? { placeholder: c.placeholder } : {}),
   }));
 
   const searchProvidersDesc = (searchProvidersArr ?? []).map((p) => ({
@@ -236,6 +237,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
       ? { keywords: l.keywords }
       : {}),
     ...(l.icon != null ? { icon: l.icon } : {}),
+    ...(l.placeholder != null ? { placeholder: l.placeholder } : {}),
   }));
 
   const hasAnyContribution =

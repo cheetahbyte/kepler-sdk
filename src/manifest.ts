@@ -22,6 +22,9 @@ export type PluginCommandDescriptor = {
   keywords?: string[];
   icon?: PluginIcon;
   shortcutPrefix?: string;
+  /** Search bar placeholder shown when this mode is active.
+   *  Falls back to "Search <name>…" when omitted. */
+  placeholder?: string;
 };
 
 export type PluginProviderDescriptor = {
@@ -42,6 +45,7 @@ export type PluginLookAheadDescriptor = {
   keywords?: string[];
   icon?: PluginIcon;
   shortcutPrefix?: string;
+  placeholder?: string;
 };
 
 export type PluginContributionsDescriptor = {
