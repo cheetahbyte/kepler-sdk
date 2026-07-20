@@ -1,0 +1,57 @@
+{
+  "id": "com.example.contract",
+  "name": "Contract Fixture",
+  "version": "1.0.0",
+  "author": "Kepler",
+  "icon": {
+    "type": "badge",
+    "base": "puzzlepiece.extension",
+    "badge": "✓"
+  },
+  "capabilities": {
+    "hasSearchMode": true,
+    "isSearchProvider": true,
+    "hasWidget": true,
+    "lookAhead": true
+  },
+  "permissions": [],
+  "networkUrls": [],
+  "contributions": {
+    "searchModes": [
+      {
+        "id": "search",
+        "title": "Contract Search",
+        "icon": {
+          "type": "rounded",
+          "base": {
+            "type": "asset",
+            "path": "icons/search.png"
+          }
+        },
+        "shortcutPrefix": "contract",
+        "placeholder": "Search contracts…"
+      }
+    ],
+    "searchProviders": [
+      {
+        "id": "provider",
+        "title": "Contract Provider"
+      }
+    ],
+    "widgets": [
+      {
+        "id": "widget",
+        "title": "Contract Widget",
+        "priorityBias": 0.1
+      }
+    ],
+    "lookAhead": [
+      {
+        "id": "upcoming",
+        "title": "Upcoming",
+        "shortcutPrefix": "upcoming"
+      }
+    ]
+  }
+}
+

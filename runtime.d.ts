@@ -37,9 +37,10 @@ interface KeplerRequestInit {
 }
 
 /**
- * Host `fetch`. HTTPS/HTTP only, ~10s timeout, text/JSON bodies only (binary
- * responses are decoded as UTF-8 and will be garbled). Rejects on network,
- * DNS, or TLS failure; a non-2xx response still resolves with `ok === false`.
+ * Host `fetch`. HTTPS/HTTP only, ~10s timeout, 5 MiB response limit, and
+ * text/JSON bodies only (binary responses are decoded as UTF-8 and will be
+ * garbled). Rejects on invalid URLs or network, DNS, and TLS failures; a
+ * non-2xx response still resolves with `ok === false`.
  */
 declare function fetch(input: string, init?: KeplerRequestInit): Promise<KeplerResponse>;
 

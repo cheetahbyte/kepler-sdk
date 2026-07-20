@@ -31,14 +31,19 @@ export type PluginContext = {
    * ```
    */
   appleScript: PluginAppleScript;
+  /** Show a lightweight in-app HUD notification. */
+  notify(title: string, options?: PluginNotificationOptions): Promise<void>;
+  /** Namespaced alias for `notify()`. */
+  notifications: PluginNotifications;
 };
 
-/** Result of resolving a city + country to a timezone via MapKit. */
-export interface ResolvedPlace {
-  city: string;
-  country: string;
-  countryCode: string;
-  timeZone: string;
+export interface PluginNotificationOptions {
+  /** Optional SF Symbol name. Defaults to `checkmark.circle.fill`. */
+  systemImage?: string;
+}
+
+export interface PluginNotifications {
+  show(title: string, options?: PluginNotificationOptions): Promise<void>;
 }
 
 /** Values that can be stored and retrieved via `ctx.storage`. */

@@ -2,7 +2,7 @@ import type { PluginSettingDefinition } from "./settings";
 import type { PluginIcon } from "./icons";
 import type { PluginShortcutDefinition } from "./shortcuts";
 
-export type PluginPermission = "network" | "maps" | "appleScript";
+export type PluginPermission = "network" | "appleScript";
 
 export type PluginCapabilities = {
   /** Plugin has its own search mode (/prefix) */

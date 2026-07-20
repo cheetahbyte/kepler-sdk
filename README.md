@@ -1,9 +1,12 @@
 # Kepler Plugin SDK
 
 Build plugins for [Kepler](https://github.com/cheetahbyte/kepler), a native macOS launcher. Your plugin runs as JavaScriptCore: no DOM, no Node, just a bundled script the app hands to JSC. The host gives you `fetch`, `XMLHttpRequest`, and `console`. Everything else is on you.
+
 ## Example Projects
+
 - [Their Time Plugin](https://github.com/orbiq-one/kepler-their-time/)
 - [Github Issue Plugin](https://github.com/orbiq-one/kepler-github-issues/)
+
 ## Quick start
 
 Scaffold a new project and install the SDK:
@@ -190,7 +193,7 @@ A single plugin can expose multiple search modes with different shortcut prefixe
 
 Global search providers contribute results to Kepler's unfiltered results list. They run in the background and should only return items when they're confident the query is relevant.
 
-The match function lets you skip expensive work. If `match` returns `null` or `Match.none`, your provider's `run` isn't called at all. `match` receives only the query — no context object is passed.
+The match function lets you skip expensive work. If `match` returns `Match.none()`, your provider's `run` isn't called at all. `match` receives only the query — no context object is passed.
 
 ```ts
 import { Provider, Match } from "@kepler-app/plugin-sdk";
@@ -200,9 +203,9 @@ searchProviders: [
     id: "docs",
     title: "Docs Search",
     match(query) {
-      if (query.raw.length < 3) return Match.none;
-      if (query.raw.match(/^doc|^wiki/i)) return Match.strong;
-      return Match.none;
+      if (query.raw.length < 3) return Match.none();
+      if (query.raw.match(/^doc|^wiki/i)) return Match.strong();
+      return Match.none();
     },
     async run(query, ctx, match) {
       const docs = await fetch(`https://docs.example.com/search?q=${encodeURIComponent(query.raw)}`)
@@ -221,11 +224,11 @@ searchProviders: [
 `Match` is a simple helper:
 
 ```ts
-Match.none           // skip this provider entirely
-Match.weak           // low confidence, results appear below stronger matches
-Match.medium         // moderate confidence
-Match.strong         // high confidence, results rank near the top
-Match.exact(1.0)     // explicit confidence value
+Match.none()          // skip this provider entirely
+Match.weak(data?)     // 0.25 confidence
+Match.medium(data?)   // 0.5 confidence
+Match.strong(data?)   // 0.8 confidence
+Match.exact(data?)    // 1.0 confidence
 ```
 
 ## Widgets
@@ -233,7 +236,7 @@ Match.exact(1.0)     // explicit confidence value
 Widgets are inline resolved views drawn below the search bar. If Kepler detects your plugin can resolve the query, it calls your widget's `match()`, then `run()`, and renders the result inline. The widget with the highest `confidence + priorityBias` wins.
 
 ```ts
-import { Widget, Confidence } from "@kepler-app/plugin-sdk";
+import { Widget, Confidence, Match } from "@kepler-app/plugin-sdk";
 
 widgets: [
   Widget.inline({
@@ -241,8 +244,8 @@ widgets: [
     title: "Unit Converter",
     priorityBias: 0.1,
     match(query) {
-      if (query.raw.match(/^\d+\s*(usd|eur|cm|in)/i)) return Match.exact(1.0);
-      return Match.none;
+      if (query.raw.match(/^\d+\s*(usd|eur|cm|in)/i)) return Match.exact();
+      return Match.none();
     },
     run(query, ctx, match) {
       const result = convert(query.raw);
@@ -294,7 +297,7 @@ Confidence.weak    // 0.25 - plausible but not certain
 
 ## Look ahead
 
-Not yet wired for JS plugins. The type is defined so you can start building now. When the native side gets a look-ahead bridge, existing plugins won't need changes.
+Look-ahead contributions populate Kepler's upcoming-items strip. Each contribution is invoked independently, so a plugin can provide multiple feeds.
 
 ```ts
 import { LookAhead } from "@kepler-app/plugin-sdk";
@@ -303,8 +306,16 @@ lookAhead: [
   LookAhead.items({
     id: "upcoming",
     title: "Upcoming",
+    shortcutPrefix: "upcoming",
     run(ctx) {
-      return [{ id: "ev1", title: "Meeting at 2pm", subtitle: "in 30 min", icon: Icon.sfSymbol("calendar"), kind: "event" }];
+      return [{
+        id: "ev1",
+        title: "Meeting at 2pm",
+        subtitle: "in 30 min",
+        icon: "calendar",
+        kind: "calendar",
+        startDate: "2026-07-18T14:00:00Z",
+      }];
     },
   }),
 ]
@@ -321,6 +332,8 @@ ctx.settings     // Record<string, string | number | boolean | Array<Record<stri
                  // resolved setting values, keyed by setting id. Falls back to each setting's defaultValue
 ctx.storage      // PluginStorage, see the Storage section below
 ctx.appleScript  // AppleScript bridge — requires the "appleScript" permission
+ctx.notify("Saved")
+ctx.notifications.show("Saved", { systemImage: "checkmark.circle.fill" })
 ```
 
 `fetch()` is available as a global. No import needed. It's a polyfill provided by the host, not the browser version. It returns a `KeplerResponse` with `ok`, `status`, `headers` (as a plain object), `.text()`, and `.json()`. No `Blob`, no `FormData`, no streaming. Text/JSON bodies only.
@@ -464,12 +477,13 @@ Action.appleScript('tell app "Music" to playpause') // run AppleScript
 
 For ad-hoc AppleScript execution from your `run()` body (not tied to a user action), use `ctx.appleScript.run(script)` instead. It returns a promise and works identically to `Action.appleScript` under the hood.
 
-Three accessory types:
+Four accessory types:
 
 ```ts
 Accessory.text("42")                   // plain text
 Accessory.keyboardShortcut("⌘K")       // shows as a keyboard shortcut badge
 Accessory.badge("Enter")               // shows as a small badge
+Accessory.toggle(true)                 // shows a native on/off state
 ```
 
 ## Networking
@@ -485,7 +499,7 @@ metadata: {
 
 Domains are validated by the CLI. Only bare hostnames, no protocols or paths. Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too.
 
-Both `fetch` and `XMLHttpRequest` share the same 10-second timeout and permission/domain gating. `fetch` rejects on network, DNS, or TLS failure; HTTP responses outside 200–299 still resolve, so check `res.ok`. The function signature matches what you'd expect, but the returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance.
+Both `fetch` and `XMLHttpRequest` share the same 10-second timeout, 5 MiB response limit, and permission/domain gating. `fetch` rejects invalid URLs and network, DNS, or TLS failures; HTTP responses outside 200–299 still resolve, so check `res.ok`. Its `text()` and `json()` body readers return real promises. The returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance. Calling `abort()` cancels an active XHR and resets it to `UNSENT`.
 
 ## Runtime limitations
 
@@ -496,7 +510,7 @@ Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically
 - **No timers:** no `setTimeout`, no `setInterval`. Async work must use Promises and `fetch`
 - **No module system:** your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
 - **JSON only:** all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
-- **`fetch` and `XMLHttpRequest` are host-provided:** HTTPS/HTTP only, text/JSON bodies only, 10-second timeout
+- **`fetch` and `XMLHttpRequest` are host-provided:** HTTPS/HTTP only, text/JSON bodies only, 10-second timeout, 5 MiB response limit
 
 ## CLI reference
 
@@ -531,8 +545,8 @@ What gets written:
 | `id`, `name`, `version`, `author` | From `metadata` (required) |
 | `description`, `icon` | From `metadata` (optional) |
 | `capabilities` | Inferred from contributions; overridable via `metadata.capabilities` |
-| `permissions` | From `metadata.permissions` (validated) |
-| `networkUrls` | From `metadata.networkUrls` (validated, normalized to bare hostnames) |
+| `permissions` | From `metadata.permissions`, defaulting to `[]` (validated) |
+| `networkUrls` | From `metadata.networkUrls`, defaulting to `[]` (validated and normalized) |
 | `settings` | From `metadata.settings` (optional) |
 | `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `keywords`, `icon`, `shortcutPrefix`, `placeholder` |
 | `contributions.searchProviders[]` | From `searchProviders` array |
@@ -541,7 +555,7 @@ What gets written:
 
 ## Common mistakes
 
-**Using the old manifest field instead of metadata.** `manifest` is deprecated. Use `metadata`.
+**Using the removed manifest field instead of metadata.** SDK 1.0 requires `metadata`; the old `manifest` alias is no longer accepted.
 
 **Putting shortcutPrefix on the plugin instead of the search mode.** Each search mode has its own prefix. The plugin itself doesn't have one.
 
@@ -554,3 +568,7 @@ What gets written:
 **Returning non-serializable values.** `undefined`, functions, Symbols, circular objects: these either vanish or crash. Stick to plain objects, arrays, strings, numbers, and booleans.
 
 **Colliding shortcut prefixes.** If two enabled search modes share the same `shortcutPrefix`, only the first one will activate. Keep prefixes unique across all installed plugins.
+
+## Migrating to 1.0
+
+SDK 1.0 removes the pre-contribution authoring surface. Use `metadata` plus `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. The legacy `manifest`, `search`, `canHandle`, `searchGlobal`, `resolve`, and `lookAheadItems` fields are not loaded. Replace map resolution and section-level actions with supported list, gallery, widget, and item-action payloads. Permissions are now limited to `network` and `appleScript`; omit `permissions` and `networkUrls` when they are not needed.

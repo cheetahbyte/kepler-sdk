@@ -1,10 +1,17 @@
 {
   "name": "@kepler-app/plugin-sdk",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "description": "TypeScript SDK for building Kepler plugins.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime.d.ts": "./runtime.d.ts"
+  },
   "bin": {
     "kepler-plugin": "./dist/cli.js"
   },
@@ -14,8 +21,9 @@
   ],
   "scripts": {
     "build": "tsup",
+    "test": "pnpm run build && node --test test/contract.test.mjs",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm run typecheck && pnpm run build"
+    "prepublishOnly": "pnpm run typecheck && pnpm run test"
   },
   "keywords": [
     "kepler",

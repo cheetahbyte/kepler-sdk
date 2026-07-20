@@ -1,5 +1,5 @@
 import { createJiti } from "jiti";
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -92,25 +92,40 @@ async function handleBundle(args: string[]): Promise<void> {
 
   // Bundle via tsup (from the project's local install).
   const tsupBin = resolve(process.cwd(), "node_modules", ".bin", "tsup");
-  const tsup = existsSync(tsupBin) ? tsupBin : "npx";
+  const hasLocalTsup = existsSync(tsupBin);
+  const tsup = hasLocalTsup ? tsupBin : "npx";
 
   const bundleArgs = [
-    entry,
+    "--entry.index", entry,
+    "--no-config",
     "--format", "iife",
     "--globalName", "KeplerPlugin",
     "--outDir", outDir,
+    "--platform", "neutral",
+    "--target", "es2022",
+    "--no-splitting",
   ];
 
-  // Only pass --noExternal as npx arg when falling back.
-  const result = spawnSync(tsup, bundleArgs, {
+  const result = spawnSync(tsup, hasLocalTsup ? bundleArgs : ["tsup", ...bundleArgs], {
     cwd: process.cwd(),
     stdio: "inherit",
-    shell: tsup === "npx" ? true : false,
+    shell: false,
   });
 
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+
+  // tsup suffixes IIFE entries with `.global.js`; the host contract is the
+  // stable filename `index.js` regardless of the source entry's name.
+  const generatedEntry = join(outDir, "index.global.js");
+  const hostEntry = join(outDir, "index.js");
+  if (!existsSync(generatedEntry)) {
+    console.error(`Bundler did not produce the expected entry: ${generatedEntry}`);
+    process.exit(1);
+  }
+  if (existsSync(hostEntry)) rmSync(hostEntry);
+  renameSync(generatedEntry, hostEntry);
 
   // Write manifest.
   const manifestObj = await buildManifestObject(entry);
@@ -165,7 +180,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   }
 
   const obj = plugin as Record<string, unknown>;
-  const meta = (obj.metadata ?? obj.manifest ?? {}) as Record<string, unknown>;
+  const meta = (obj.metadata ?? {}) as Record<string, unknown>;
 
   const required = ["id", "name", "version", "author"] as const;
   for (const key of required) {
@@ -178,27 +193,21 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const permissions = validatePermissions(meta);
   const networkUrls = validateNetworkUrls(meta, permissions);
 
-  const searchModesArr = obj.searchModes as Array<Record<string, unknown>> | undefined;
-  const searchProvidersArr = obj.searchProviders as Array<Record<string, unknown>> | undefined;
-  const widgetsArr = obj.widgets as Array<Record<string, unknown>> | undefined;
-  const lookAheadArr = obj.lookAhead as Array<Record<string, unknown>> | undefined;
+  const searchModesArr = validateContributions(obj.searchModes, "searchModes", true);
+  const searchProvidersArr = validateContributions(obj.searchProviders, "searchProviders", false);
+  const widgetsArr = validateContributions(obj.widgets, "widgets", false);
+  const lookAheadArr = validateContributions(obj.lookAhead, "lookAhead", false);
 
   const hasSearchModes = Array.isArray(searchModesArr) && searchModesArr.length > 0;
   const hasSearchProviders = Array.isArray(searchProvidersArr) && searchProvidersArr.length > 0;
   const hasWidgets = Array.isArray(widgetsArr) && widgetsArr.length > 0;
   const hasLookAhead = Array.isArray(lookAheadArr) && lookAheadArr.length > 0;
 
-  const hasLegacySearch = typeof obj.search === "function";
-  const hasLegacyCanHandle = typeof obj.canHandle === "function";
-  const hasLegacySearchGlobal = typeof obj.searchGlobal === "function";
-  const hasLegacyResolve = typeof obj.resolve === "function";
-  const hasLegacyLookAhead = typeof obj.lookAheadItems === "function";
-
   const capabilities: Record<string, boolean> = {
-    hasSearchMode: hasSearchModes || hasLegacySearch,
-    isSearchProvider: hasSearchProviders || (hasLegacyCanHandle && hasLegacySearchGlobal),
-    hasWidget: hasWidgets || hasLegacyResolve,
-    lookAhead: hasLookAhead || hasLegacyLookAhead,
+    hasSearchMode: hasSearchModes,
+    isSearchProvider: hasSearchProviders,
+    hasWidget: hasWidgets,
+    lookAhead: hasLookAhead,
   };
 
   const explicitCaps = meta.capabilities as Record<string, boolean> | undefined;
@@ -237,6 +246,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
       ? { keywords: l.keywords }
       : {}),
     ...(l.icon != null ? { icon: l.icon } : {}),
+    ...(l.shortcutPrefix != null ? { shortcutPrefix: l.shortcutPrefix } : {}),
     ...(l.placeholder != null ? { placeholder: l.placeholder } : {}),
   }));
 
@@ -282,17 +292,50 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
 
 // MARK: - Validation
 
-const VALID_PERMISSIONS = new Set(["network", "maps", "appleScript"]);
+const VALID_PERMISSIONS = new Set(["network", "appleScript"]);
+
+function validateContributions(
+  raw: unknown,
+  collection: string,
+  requiresTitle: boolean
+): Array<Record<string, unknown>> {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) {
+    console.error(`${collection} must be an array`);
+    process.exit(1);
+  }
+  return raw.map((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      console.error(`${collection}[${index}] must be an object`);
+      process.exit(1);
+    }
+    const contribution = entry as Record<string, unknown>;
+    if (typeof contribution.id !== "string" || !contribution.id.trim()) {
+      console.error(`${collection}[${index}].id must be a non-empty string`);
+      process.exit(1);
+    }
+    if (requiresTitle && (typeof contribution.title !== "string" || !contribution.title.trim())) {
+      console.error(`${collection}[${index}].title must be a non-empty string`);
+      process.exit(1);
+    }
+    if (contribution.title != null && typeof contribution.title !== "string") {
+      console.error(`${collection}[${index}].title must be a string when provided`);
+      process.exit(1);
+    }
+    return contribution;
+  });
+}
 
 function validatePermissions(meta: Record<string, unknown>): string[] {
   const raw = meta.permissions;
+  if (raw == null) return [];
   if (!Array.isArray(raw)) {
     console.error("metadata.permissions must be an array");
     process.exit(1);
   }
   for (const p of raw) {
     if (typeof p !== "string" || !VALID_PERMISSIONS.has(p)) {
-      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, maps, appleScript`);
+      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, appleScript`);
       process.exit(1);
     }
   }
@@ -319,33 +362,42 @@ function validateShortcuts(meta: Record<string, unknown>): Record<string, unknow
   const raw = meta.shortcuts;
   if (!Array.isArray(raw)) return [];
   const validKinds = new Set(["searchPrefix", "globalHotkey"]);
-  return raw.filter((s): s is Record<string, unknown> => {
-    if (!s || typeof s !== "object") return false;
+  return raw.map((s, index): Record<string, unknown> => {
+    if (!s || typeof s !== "object") {
+      console.error(`metadata.shortcuts[${index}] must be an object`);
+      process.exit(1);
+    }
     const obj = s as Record<string, unknown>;
-    if (typeof obj.id !== "string" || !obj.id) return false;
-    if (typeof obj.title !== "string" || !obj.title) return false;
+    if (typeof obj.id !== "string" || !obj.id) {
+      console.error(`metadata.shortcuts[${index}].id must be a non-empty string`);
+      process.exit(1);
+    }
+    if (typeof obj.title !== "string" || !obj.title) {
+      console.error(`shortcut "${obj.id}": title must be a non-empty string`);
+      process.exit(1);
+    }
     if (typeof obj.kind !== "string" || !validKinds.has(obj.kind)) {
       console.error(`shortcut "${obj.id}": kind must be "searchPrefix" or "globalHotkey"`);
-      return false;
+      process.exit(1);
     }
     if (obj.defaultValue != null) {
       if (obj.kind === "searchPrefix" && typeof obj.defaultValue !== "string") {
         console.error(`shortcut "${obj.id}": searchPrefix defaultValue must be a string`);
-        return false;
+        process.exit(1);
       }
       if (obj.kind === "globalHotkey") {
         if (typeof obj.defaultValue !== "object" || obj.defaultValue == null) {
           console.error(`shortcut "${obj.id}": globalHotkey defaultValue must be an object with key and modifiers`);
-          return false;
+          process.exit(1);
         }
         const dv = obj.defaultValue as Record<string, unknown>;
         if (typeof dv.key !== "string" || !Array.isArray(dv.modifiers) || !dv.modifiers.every(m => typeof m === "string")) {
           console.error(`shortcut "${obj.id}": globalHotkey defaultValue requires key (string) and modifiers (string[])`);
-          return false;
+          process.exit(1);
         }
       }
     }
-    return true;
+    return obj;
   });
 }
 

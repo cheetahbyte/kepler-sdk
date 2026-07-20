@@ -11,15 +11,19 @@ export type PluginListItem = {
   action?: PluginAction;
 };
 
-export type PluginListAccessory = {
-  type: "text" | "keyboardShortcut" | "badge";
-  value: string;
-  /**
-   * When false (default), the accessory only shows on the highlighted row.
-   * Set true to keep it visible on every row.
-   */
-  alwaysVisible?: boolean;
-};
+export type PluginListAccessory =
+  | {
+      type: "text" | "keyboardShortcut" | "badge";
+      value: string;
+      /** When false, the accessory only shows on the highlighted row. */
+      alwaysVisible?: boolean;
+    }
+  | {
+      type: "toggle";
+      value: boolean;
+      /** Toggles are visible by default so their state remains readable. */
+      alwaysVisible?: boolean;
+    };
 
 export const Accessory = {
   text(value: string, alwaysVisible?: boolean): PluginListAccessory {
@@ -33,20 +37,22 @@ export const Accessory = {
   badge(value: string, alwaysVisible?: boolean): PluginListAccessory {
     return { type: "badge", value, alwaysVisible };
   },
+
+  toggle(value: boolean, alwaysVisible?: boolean): PluginListAccessory {
+    return {
+      type: "toggle",
+      value,
+      ...(alwaysVisible != null ? { alwaysVisible } : {}),
+    };
+  },
 };
 
 // MARK: - Sectioned Results
-
-export type PluginResultItemAction = {
-  id: string;
-  title: string;
-};
 
 export type PluginResultItem = {
   id: string;
   title?: string;
   rows: PluginResultRow[];
-  actions?: PluginResultItemAction[];
 };
 
 export type PluginResultRow =
@@ -56,10 +62,7 @@ export type PluginResultRow =
 
 export type PluginWidgetRow = {
   id: string;
-  /** The widget view rendered inline. The host reads `confidence` as a sibling
-   *  field, not nested inside the view (unlike a top-level `widgets` resolver). */
   view: PluginResolvedView;
-  confidence?: number;
 };
 
 // MARK: - Gallery
@@ -91,4 +94,3 @@ export type PluginGalleryPreview =
   | { type: "icon"; icon: PluginIcon }
   | { type: "fileIcon"; path: string }
   | { type: "none" };
-
