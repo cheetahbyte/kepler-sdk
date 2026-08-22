@@ -117,7 +117,7 @@ A plugin is a default-exported object from `definePlugin()`. It has two layers:
 
 **Metadata** is the static description. `id`, `name`, `version`, `author`, `icon`, capabilities the CLI infers from your contributions, `settings`, `permissions`, and `networkUrls`. This gets serialized into `manifest.json` and tells Kepler who you are and what you need.
 
-**Contributions** are the four things your plugin actually does: `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. Each is an array of objects with `id`, `title`, and a `run()` function. These are what Kepler calls at runtime.
+**Contributions** are the four things your plugin actually does: `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. Search modes and look-ahead need `id`, `title`, and `run()`. Providers and widgets also need `match()`.
 
 The CLI reads your TypeScript source, detects which contributions you've defined, and writes a `manifest.json` with the right `capabilities` flags. You don't manually set `hasSearchMode: true`. If you have `searchModes`, it's on.
 
@@ -136,6 +136,7 @@ metadata: {
   permissions: ["network"],      // what the plugin may access
   networkUrls: ["api.example.com"], // domains fetch() is allowed to reach
   settings: [ ... ],             // user-configurable values, see settings section
+  shortcuts: [ ... ],            // search prefixes and global hotkeys, see shortcuts section
 }
 ```
 
@@ -188,6 +189,40 @@ Command.search({
 ```
 
 A single plugin can expose multiple search modes with different shortcut prefixes. `Command.search()` is just an identity helper. It returns whatever you pass in, giving you autocomplete.
+
+To mix list rows with inline widgets or galleries, implement `sectionedResults` on the search mode. Kepler calls it first and falls back to `run()` when it returns nothing.
+
+```ts
+Command.search({
+  id: "emoji",
+  title: "Emoji",
+  sectionedResults(query, ctx) {
+    return [{
+      id: "results",
+      title: "Emoji",
+      rows: [
+        { type: "list", item: { id: "wave", title: "Wave", action: Action.copy("👋") } },
+        {
+          type: "gallery",
+          gallery: {
+            id: "grid",
+            layout: "grid",          // or "horizontal"; always 4 columns
+            items: [{
+              id: "fire",
+              title: "Fire",
+              preview: { type: "text", value: "🔥" },
+              action: Action.copy("🔥"),
+            }],
+          },
+        },
+      ],
+    }];
+  },
+  run: () => [],
+})
+```
+
+Gallery previews: `text`, `code`, `image`, `icon`, `fileIcon`, `none`. Section header actions are not executed.
 
 ## Search providers
 
@@ -301,7 +336,7 @@ Confidence.weak    // 0.25 - plausible but not certain
 
 ## Look ahead
 
-Look-ahead contributions populate Kepler's upcoming-items strip. Each contribution is invoked independently, so a plugin can provide multiple feeds.
+Look-ahead contributions populate Kepler's upcoming-items strip. `title` is required. Each contribution is invoked independently, so a plugin can provide multiple feeds. `kind` must be `calendar`, `weather`, `reminder`, `timer`, or `plugin`. `icon` is an SF Symbol name, not a composite `PluginIcon`. JavaScript look-ahead items have no click, swipe, or timer controls.
 
 ```ts
 import { LookAhead } from "@kepler-app/plugin-sdk";
@@ -350,7 +385,7 @@ Plugins can declare user-configurable settings. Values are readable in `ctx.sett
 
 ```ts
 settings: [
-  { id: "apiKey", title: "API Key", description: "Your service API key.", kind: "secureText", defaultValue: "" },
+  { id: "apiKey", title: "API Key", description: "Your service API key.", kind: "secureText", defaultValue: "" }, // Keychain
   { id: "maxResults", title: "Max Results", kind: "number", defaultValue: 10, min: 1, max: 100, step: 1 },
   { id: "theme", title: "Theme", kind: "picker", defaultValue: "auto", options: [
     { id: "auto", title: "System" },
