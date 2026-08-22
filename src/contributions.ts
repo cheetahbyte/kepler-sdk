@@ -27,8 +27,9 @@ export type PluginCommand = {
 export type PluginProvider = {
   id: string;
   title?: string;
-  /** The host invokes `match` with the query only — no context is passed. */
-  match?(query: PluginQuery): MaybePromise<PluginMatch>;
+  /** The host invokes `match` with the query only — no context is passed.
+   *  Kepler 0.8.0 treats a missing `match` as `Match.none()` and never calls `run`. */
+  match(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginListItem[]>;
 };
 
@@ -36,14 +37,15 @@ export type PluginResolver = {
   id: string;
   title?: string;
   priorityBias?: number;
-  /** The host invokes `match` with the query only — no context is passed. */
-  match?(query: PluginQuery): MaybePromise<PluginMatch>;
+  /** The host invokes `match` with the query only — no context is passed.
+   *  Kepler 0.8.0 treats a missing `match` as `Match.none()` and never calls `run`. */
+  match(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginResolution | null>;
 };
 
 export type PluginLookAhead = {
   id: string;
-  title?: string;
+  title: string;
   subtitle?: string;
   keywords?: string[];
   icon?: PluginIcon;

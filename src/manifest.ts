@@ -40,7 +40,7 @@ export type PluginWidgetDescriptor = {
 
 export type PluginLookAheadDescriptor = {
   id: string;
-  title?: string;
+  title: string;
   subtitle?: string;
   keywords?: string[];
   icon?: PluginIcon;

@@ -40,6 +40,21 @@ test("CLI emits the versioned manifest contract with empty permission defaults",
   assert.deepEqual(JSON.parse(result.stdout), expected);
 });
 
+test("CLI requires match on providers and title on look-ahead", async () => {
+  const missingMatch = new URL("./fixtures/missing-match-plugin.mjs", import.meta.url);
+  const missingTitle = new URL("./fixtures/missing-lookahead-title-plugin.mjs", import.meta.url);
+  const matchResult = spawnSync(process.execPath, [cliURL.pathname, "manifest", missingMatch.pathname], {
+    encoding: "utf8",
+  });
+  const titleResult = spawnSync(process.execPath, [cliURL.pathname, "manifest", missingTitle.pathname], {
+    encoding: "utf8",
+  });
+  assert.notEqual(matchResult.status, 0);
+  assert.match(matchResult.stderr, /match is required/);
+  assert.notEqual(titleResult.status, 0);
+  assert.match(titleResult.stderr, /title must be a non-empty string/);
+});
+
 test("CLI no longer infers capabilities from legacy entry points", async () => {
   const legacyURL = new URL("./fixtures/legacy-plugin.mjs", import.meta.url);
   const result = spawnSync(process.execPath, [cliURL.pathname, "manifest", legacyURL.pathname], {

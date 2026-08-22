@@ -2,7 +2,6 @@ import type { PluginIcon } from "./icons";
 
 export type PluginResolution = {
   confidence: number;
-  reason?: string;
   view: PluginResolvedView;
 };
 

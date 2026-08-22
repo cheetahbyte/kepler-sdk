@@ -3,6 +3,7 @@ export type PluginObjectListField = {
   title: string;
   kind: "text" | "timeZone" | "place";
   placeholder?: string;
+  description?: string;
   required?: boolean;
 };
 

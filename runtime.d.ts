@@ -44,7 +44,7 @@ interface KeplerRequestInit {
  */
 declare function fetch(input: string, init?: KeplerRequestInit): Promise<KeplerResponse>;
 
-/** Host `console`. Output is forwarded to the app log (NSLog). */
+/** Host `console`. Kepler forwards these to the app log in DEBUG builds only. */
 declare const console: {
   log(...args: unknown[]): void;
   warn(...args: unknown[]): void;

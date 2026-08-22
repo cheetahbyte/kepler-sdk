@@ -193,7 +193,9 @@ A single plugin can expose multiple search modes with different shortcut prefixe
 
 Global search providers contribute results to Kepler's unfiltered results list. They run in the background and should only return items when they're confident the query is relevant.
 
-The match function lets you skip expensive work. If `match` returns `Match.none()`, your provider's `run` isn't called at all. `match` receives only the query — no context object is passed.
+The match function is required. If it is missing or returns `Match.none()`, Kepler never calls `run`. `match` receives only the query — no context object is passed.
+
+Kepler 0.8.0 invokes only the first `searchProviders` entry.
 
 ```ts
 import { Provider, Match } from "@kepler-app/plugin-sdk";
@@ -233,7 +235,9 @@ Match.exact(data?)    // 1.0 confidence
 
 ## Widgets
 
-Widgets are inline resolved views drawn below the search bar. If Kepler detects your plugin can resolve the query, it calls your widget's `match()`, then `run()`, and renders the result inline. The widget with the highest `confidence + priorityBias` wins.
+Widgets are inline resolved views drawn below the search bar. Kepler calls `match()`, then `run()`, and renders the result inline. `match` is required; omitting it is treated as `Match.none()`.
+
+Kepler 0.8.0 invokes only the first `widgets` entry. `priorityBias` is decoded but not applied to JavaScript widgets — ranking uses `confidence` only.
 
 ```ts
 import { Widget, Confidence, Match } from "@kepler-app/plugin-sdk";
@@ -338,7 +342,7 @@ ctx.notifications.show("Saved", { systemImage: "checkmark.circle.fill" })
 
 `fetch()` is available as a global. No import needed. It's a polyfill provided by the host, not the browser version. It returns a `KeplerResponse` with `ok`, `status`, `headers` (as a plain object), `.text()`, and `.json()`. No `Blob`, no `FormData`, no streaming. Text/JSON bodies only.
 
-`XMLHttpRequest` is also available globally, with the same network permission/domain gating as `fetch`. Async only — synchronous requests throw. Use it when you need progress events or compatibility with existing libraries.
+`XMLHttpRequest` is also available globally, with the same network permission/domain gating as `fetch`. Async only — synchronous requests throw. There is no `onprogress`. Use it for libraries that expect XHR rather than `fetch`.
 
 ## Settings
 
@@ -388,7 +392,7 @@ Search prefix shortcuts let users type a word after `/` to jump into a specific 
 
 Global hotkey shortcuts register system-wide keyboard shortcuts. The `key` is a lowercase key name (`"a"`–`"z"`, `"0"`–`"9"`, `"space"`, `"return"`, `"escape"`, `"tab"`, `"delete"`, `"f1"`–`"f12"`, `"upArrow"`, `"downArrow"`, `"leftArrow"`, `"rightArrow"`). Modifiers are an array of `"command"`, `"option"`, `"shift"`, or `"control"`.
 
-`Shortcut.activateSearchMode` takes an optional third argument. Pass `{ requiresSelectedText: true }` to only fire the shortcut when there is selected text, which Kepler passes into the activated search mode. Defaults to `false`.
+`Shortcut.activateSearchMode` takes an optional third argument `{ requiresSelectedText: true }`. Kepler 0.8.0 stores the flag but only captures frontmost selected text for the built-in Spellcheck plugin. A JavaScript plugin still activates its search mode; `query.raw` is not filled with the selection.
 
 ```ts
 Shortcut.activateSearchMode(
@@ -438,6 +442,7 @@ Icon.sfSymbol("magnifyingglass")           // any SF Symbol name
 Icon.emoji("🔌")                           // single emoji character
 Icon.url("https://example.com/icon.png")   // remote image, cached by Kepler
 Icon.asset("icons/github.png")             // image bundled in the .keplugin directory
+Icon.appIcon("/Applications/Safari.app")   // macOS application icon
 Icon.rounded(Icon.url("https://..."))      // clip the icon to a circle
 Icon.withBadge(                             // overlay a badge icon on the bottom-right
   Icon.url("https://unavatar.io/x/laura"),
@@ -464,13 +469,14 @@ import { Action, Accessory } from "@kepler-app/plugin-sdk";
 }
 ```
 
-Four action types:
+Five action types:
 
 ```ts
 Action.open("/path/to/file")                       // open a file or application
 Action.copy("text to copy")                        // copy to clipboard
 Action.url("https://...")                          // open in default browser
 Action.appleScript('tell app "Music" to playpause') // run AppleScript
+Action.copyImage("/absolute/path/to/image.png")    // copy image bytes to the clipboard
 ```
 
 `Action.appleScript` requires `metadata.permissions: ["appleScript"]`. Without it, the action is ignored. macOS may show an Automation permission prompt the first time the script targets a specific app.
@@ -511,6 +517,7 @@ Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically
 - **No module system:** your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
 - **JSON only:** all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
 - **`fetch` and `XMLHttpRequest` are host-provided:** HTTPS/HTTP only, text/JSON bodies only, 10-second timeout, 5 MiB response limit
+- **`console` logs in DEBUG builds only**
 
 ## CLI reference
 
@@ -551,7 +558,7 @@ What gets written:
 | `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `keywords`, `icon`, `shortcutPrefix`, `placeholder` |
 | `contributions.searchProviders[]` | From `searchProviders` array |
 | `contributions.widgets[]` | From `widgets` array, with `id`, `title`, `priorityBias` |
-| `contributions.lookAhead[]` | From `lookAhead` array |
+| `contributions.lookAhead[]` | From `lookAhead` array (`id` and `title` required) |
 
 ## Common mistakes
 

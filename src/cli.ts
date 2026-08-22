@@ -196,7 +196,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const searchModesArr = validateContributions(obj.searchModes, "searchModes", true);
   const searchProvidersArr = validateContributions(obj.searchProviders, "searchProviders", false);
   const widgetsArr = validateContributions(obj.widgets, "widgets", false);
-  const lookAheadArr = validateContributions(obj.lookAhead, "lookAhead", false);
+  const lookAheadArr = validateContributions(obj.lookAhead, "lookAhead", true);
 
   const hasSearchModes = Array.isArray(searchModesArr) && searchModesArr.length > 0;
   const hasSearchProviders = Array.isArray(searchProvidersArr) && searchProvidersArr.length > 0;
@@ -240,7 +240,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
 
   const lookAheadDesc = (lookAheadArr ?? []).map((l) => ({
     id: l.id,
-    ...(l.title != null ? { title: l.title } : {}),
+    title: l.title,
     ...(l.subtitle != null ? { subtitle: l.subtitle } : {}),
     ...(Array.isArray(l.keywords) && l.keywords.length > 0
       ? { keywords: l.keywords }
@@ -320,6 +320,10 @@ function validateContributions(
     }
     if (contribution.title != null && typeof contribution.title !== "string") {
       console.error(`${collection}[${index}].title must be a string when provided`);
+      process.exit(1);
+    }
+    if ((collection === "searchProviders" || collection === "widgets") && typeof contribution.match !== "function") {
+      console.error(`${collection}[${index}].match is required`);
       process.exit(1);
     }
     return contribution;
