@@ -1,6 +1,6 @@
 import type { PluginCapabilities, PluginPermission } from "./manifest";
 import type { PluginSettingDefinition } from "./settings";
-import type { PluginCommand, PluginProvider, PluginResolver, PluginLookAhead } from "./contributions";
+import type { PluginCommand, PluginProvider, PluginResolver, PluginLookAhead, PluginFileSearchProvider } from "./contributions";
 import type { PluginIcon } from "./icons";
 import type { PluginShortcutDefinition } from "./shortcuts";
 
@@ -25,6 +25,7 @@ export type KeplerPluginObject = {
 
   searchModes?: PluginCommand[];
   searchProviders?: PluginProvider[];
+  fileSearchProviders?: PluginFileSearchProvider[];
   widgets?: PluginResolver[];
   lookAhead?: PluginLookAhead[];
 };

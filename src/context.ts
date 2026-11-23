@@ -1,4 +1,4 @@
-/** Per-call context passed to a plugin's `run` (and optionally `match`). */
+/** Per-call context passed to `run` and `sectionedResults`, but not `match`. */
 export type PluginContext = {
   /** Locale string, e.g. "en_US". */
   locale: string;
@@ -16,7 +16,6 @@ export type PluginContext = {
    * ```
    */
   settings: Record<string, string | number | boolean | Array<Record<string, string>>>;
-  /** `fetch()` is available as a global polyfill. No import needed. */
   /**
    * Persistent per-plugin key-value storage. Values are JSON-serialized and kept
    * in the app's sandbox. Each plugin only sees its own keys.
@@ -31,6 +30,8 @@ export type PluginContext = {
    * ```
    */
   appleScript: PluginAppleScript;
+  /** Persistent subprocess sessions. Requires the `process` permission. */
+  process: PluginProcess;
   /** Show a lightweight in-app HUD notification. */
   notify(title: string, options?: PluginNotificationOptions): Promise<void>;
   /** Namespaced alias for `notify()`. */
@@ -63,10 +64,37 @@ export type PluginStorageValue =
 export interface PluginStorage {
   /** Read a value. Returns `null` if the key doesn't exist. */
   get<T extends PluginStorageValue = PluginStorageValue>(key: string): T | null;
-  /** Write a value. Overwrites any existing value. */
+  /** Write a value. Overwrites any existing value. Throws if the write exceeds the 10 MiB per-plugin quota. */
   set<T extends PluginStorageValue>(key: string, value: T): void;
   /** Remove a key. No-op if the key doesn't exist. */
   delete(key: string): void;
+}
+
+export interface PluginProcessRequest {
+  /** Session name scoped to this plugin. Requests are serialized per session. */
+  session: string;
+  /** Absolute or ~/ path. No PATH lookup or shell expansion. */
+  executable: string;
+  arguments?: string[];
+  /** One UTF-8 record without LF or CR. Limited to 1 MiB. */
+  input: string;
+  /** Positive timeout in milliseconds, at most 8000. Defaults to 5000. */
+  timeoutMs?: number;
+}
+
+/**
+ * Requires `process`, which permits programs to run with your user privileges.
+ * Network domain restrictions do not constrain these programs.
+ */
+export interface PluginProcess {
+  /**
+   * Send one record and receive one UTF-8 line without its newline (max 16 MiB).
+   * The host appends the input newline. Changing executable or arguments restarts
+   * the session. The host closes sessions when the plugin is unloaded or disabled.
+   */
+  request(request: PluginProcessRequest): Promise<string>;
+  /** Close a session. Closing an absent session is a no-op. */
+  close(session: string): Promise<void>;
 }
 
 /**

@@ -1,4 +1,10 @@
-import type { PluginCommand, PluginProvider, PluginResolver, PluginLookAhead } from "./contributions";
+import type {
+  PluginCommand,
+  PluginProvider,
+  PluginFileSearchProvider,
+  PluginResolver,
+  PluginLookAhead,
+} from "./contributions";
 
 export const Command = {
   search(config: PluginCommand): PluginCommand {
@@ -8,6 +14,12 @@ export const Command = {
 
 export const Provider = {
   results(config: PluginProvider): PluginProvider {
+    return config;
+  },
+};
+
+export const FileSearch = {
+  provider(config: PluginFileSearchProvider): PluginFileSearchProvider {
     return config;
   },
 };

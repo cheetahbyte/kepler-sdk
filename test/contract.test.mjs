@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import plugin, { representativeValues } from "./fixtures/contract-plugin.mjs";
+import { Action } from "../dist/index.js";
 
 const fixtureURL = new URL("./fixtures/plugin-contract-v1.json", import.meta.url);
 const entryURL = new URL("./fixtures/contract-plugin.mjs", import.meta.url);
@@ -19,6 +20,11 @@ test("public builders expose the 1.0 runtime shapes", () => {
     confidence: 0.8,
     data: "contract",
   });
+  assert.deepEqual(representativeValues.keepOpenAction, {
+    type: "copy",
+    value: "enabled",
+    keepOpen: true,
+  });
   assert.equal(plugin.lookAhead?.[0]?.run({
     locale: "en_US",
     now: "2026-07-18T12:00:00Z",
@@ -28,6 +34,25 @@ test("public builders expose the 1.0 runtime shapes", () => {
     notify: async () => {},
     notifications: { show: async () => {} },
   })[0]?.kind, "calendar");
+});
+
+test("all action builders preserve payloads and optional keepOpen behavior", () => {
+  const cases = [
+    [Action.open, "/Applications/Safari.app", { type: "open", path: "/Applications/Safari.app" }],
+    [Action.copy, "text", { type: "copy", value: "text" }],
+    [Action.url, "https://example.com", { type: "url", url: "https://example.com" }],
+    [Action.appleScript, "return 1", { type: "appleScript", script: "return 1" }],
+    [Action.copyImage, "/tmp/image.png", { type: "copyImage", fileURL: "/tmp/image.png" }],
+  ];
+  for (const [build, value, expected] of cases) {
+    assert.deepEqual(build(value), expected);
+    for (const keepOpen of [true, false]) {
+      assert.deepEqual(JSON.parse(JSON.stringify(build(value, { keepOpen }))), {
+        ...expected,
+        keepOpen,
+      });
+    }
+  }
 });
 
 test("CLI emits the versioned manifest contract with empty permission defaults", async () => {

@@ -2,13 +2,15 @@ import type { PluginSettingDefinition } from "./settings";
 import type { PluginIcon } from "./icons";
 import type { PluginShortcutDefinition } from "./shortcuts";
 
-export type PluginPermission = "network" | "appleScript";
+export type PluginPermission = "network" | "appleScript" | "process";
 
 export type PluginCapabilities = {
   /** Plugin has its own search mode (/prefix) */
   hasSearchMode: boolean;
   /** Contributes results to the global search bar */
   isSearchProvider: boolean;
+  /** Supplies native File Search results; absent on older manifests. */
+  isFileSearchProvider?: boolean;
   /** Can turn a query into an inline widget view */
   hasWidget: boolean;
   /** Contributes items to the look-ahead strip */
@@ -30,6 +32,13 @@ export type PluginCommandDescriptor = {
 export type PluginProviderDescriptor = {
   id: string;
   title?: string;
+  priorityBias?: number;
+  supportsTabResults?: boolean;
+};
+
+export type PluginFileSearchProviderDescriptor = {
+  id: string;
+  title: string;
 };
 
 export type PluginWidgetDescriptor = {
@@ -51,6 +60,7 @@ export type PluginLookAheadDescriptor = {
 export type PluginContributionsDescriptor = {
   searchModes: PluginCommandDescriptor[];
   searchProviders: PluginProviderDescriptor[];
+  fileSearchProviders?: PluginFileSearchProviderDescriptor[];
   widgets: PluginWidgetDescriptor[];
   lookAhead: PluginLookAheadDescriptor[];
 };

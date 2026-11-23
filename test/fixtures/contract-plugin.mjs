@@ -13,6 +13,7 @@ import {
 export const representativeValues = {
   toggle: Accessory.toggle(true),
   match: Match.strong("contract"),
+  keepOpenAction: Action.copy("enabled", { keepOpen: true }),
 };
 
 export default definePlugin({

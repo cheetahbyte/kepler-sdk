@@ -195,6 +195,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
 
   const searchModesArr = validateContributions(obj.searchModes, "searchModes", true);
   const searchProvidersArr = validateContributions(obj.searchProviders, "searchProviders", false);
+  const fileSearchProvidersArr = validateContributions(obj.fileSearchProviders, "fileSearchProviders", true);
   const widgetsArr = validateContributions(obj.widgets, "widgets", false);
   const lookAheadArr = validateContributions(obj.lookAhead, "lookAhead", true);
 
@@ -206,6 +207,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const capabilities: Record<string, boolean> = {
     hasSearchMode: hasSearchModes,
     isSearchProvider: hasSearchProviders,
+    ...(obj.fileSearchProviders != null ? { isFileSearchProvider: fileSearchProvidersArr.length > 0 } : {}),
     hasWidget: hasWidgets,
     lookAhead: hasLookAhead,
   };
@@ -226,6 +228,15 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   }));
 
   const searchProvidersDesc = (searchProvidersArr ?? []).map((p) => ({
+    id: p.id,
+    ...(p.title != null ? { title: p.title } : {}),
+    ...(typeof p.priorityBias === "number" ? { priorityBias: p.priorityBias } : {}),
+    ...(typeof p.supportsTabResults === "boolean"
+      ? { supportsTabResults: p.supportsTabResults }
+      : {}),
+  }));
+
+  const fileSearchProvidersDesc = fileSearchProvidersArr.map((p) => ({
     id: p.id,
     title: p.title,
   }));
@@ -253,6 +264,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
   const hasAnyContribution =
     searchModesDesc.length > 0 ||
     searchProvidersDesc.length > 0 ||
+    fileSearchProvidersDesc.length > 0 ||
     widgetsDesc.length > 0 ||
     lookAheadDesc.length > 0;
 
@@ -273,6 +285,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
     output.contributions = {
       searchModes: searchModesDesc,
       searchProviders: searchProvidersDesc,
+      ...(obj.fileSearchProviders != null ? { fileSearchProviders: fileSearchProvidersDesc } : {}),
       widgets: widgetsDesc,
       lookAhead: lookAheadDesc,
     };
@@ -292,7 +305,7 @@ async function buildManifestObject(entry: string): Promise<ManifestObject> {
 
 // MARK: - Validation
 
-const VALID_PERMISSIONS = new Set(["network", "appleScript"]);
+const VALID_PERMISSIONS = new Set(["network", "appleScript", "process"]);
 
 function validateContributions(
   raw: unknown,
@@ -326,6 +339,10 @@ function validateContributions(
       console.error(`${collection}[${index}].match is required`);
       process.exit(1);
     }
+    if (collection === "fileSearchProviders" && typeof contribution.run !== "function") {
+      console.error(`${collection}[${index}].run is required`);
+      process.exit(1);
+    }
     return contribution;
   });
 }
@@ -339,7 +356,7 @@ function validatePermissions(meta: Record<string, unknown>): string[] {
   }
   for (const p of raw) {
     if (typeof p !== "string" || !VALID_PERMISSIONS.has(p)) {
-      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, appleScript`);
+      console.error(`metadata.permissions contains invalid value: "${String(p)}". Allowed: network, appleScript, process`);
       process.exit(1);
     }
   }

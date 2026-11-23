@@ -27,10 +27,35 @@ export type PluginCommand = {
 export type PluginProvider = {
   id: string;
   title?: string;
+  priorityBias?: number;
+  supportsTabResults?: boolean;
   /** The host invokes `match` with the query only — no context is passed.
-   *  Kepler 0.8.0 treats a missing `match` as `Match.none()` and never calls `run`. */
+   *  Kepler treats a missing `match` as `Match.none()` and skips `run`. */
   match(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginListItem[]>;
+};
+
+export type FileSearchResponse = {
+  files: Array<{
+    /** Absolute local filesystem path, not a URL. */
+    path: string;
+    isDirectory: boolean;
+    /** Relevance from 0 to 100. Omit to use ordered fallback scores. */
+    score?: number;
+  }>;
+  /** Omitted status means ready. Indexing is not an error. */
+  status?: "ready" | "indexing" | "unavailable";
+  message?: string;
+};
+
+export type PluginFileSearchProvider = {
+  id: string;
+  title: string;
+  run(
+    query: PluginQuery,
+    ctx: PluginContext,
+    options: { limit: number }
+  ): MaybePromise<FileSearchResponse>;
 };
 
 export type PluginResolver = {
@@ -38,7 +63,7 @@ export type PluginResolver = {
   title?: string;
   priorityBias?: number;
   /** The host invokes `match` with the query only — no context is passed.
-   *  Kepler 0.8.0 treats a missing `match` as `Match.none()` and never calls `run`. */
+   *  Widget matching is advisory: `run` still executes with `Match.none()` when `match` does not match. */
   match(query: PluginQuery): MaybePromise<PluginMatch>;
   run(query: PluginQuery, ctx: PluginContext, match?: PluginMatch): MaybePromise<PluginResolution | null>;
 };
@@ -57,6 +82,7 @@ export type PluginLookAhead = {
 export type PluginContributions = {
   searchModes: PluginCommand[];
   searchProviders: PluginProvider[];
+  fileSearchProviders?: PluginFileSearchProvider[];
   widgets: PluginResolver[];
   lookAhead: PluginLookAhead[];
 };

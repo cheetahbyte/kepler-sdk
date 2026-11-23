@@ -117,7 +117,7 @@ A plugin is a default-exported object from `definePlugin()`. It has two layers:
 
 **Metadata** is the static description. `id`, `name`, `version`, `author`, `icon`, capabilities the CLI infers from your contributions, `settings`, `permissions`, and `networkUrls`. This gets serialized into `manifest.json` and tells Kepler who you are and what you need.
 
-**Contributions** are the four things your plugin actually does: `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. Search modes and look-ahead need `id`, `title`, and `run()`. Providers and widgets also need `match()`.
+**Contributions** describe what your plugin does: `searchModes`, `searchProviders`, `fileSearchProviders`, `widgets`, and `lookAhead`. Search modes and look-ahead need `id`, `title`, and `run()`. Global providers and widgets also need `match()`. File search providers need `id`, `title`, and `run()`, without `match()`.
 
 The CLI reads your TypeScript source, detects which contributions you've defined, and writes a `manifest.json` with the right `capabilities` flags. You don't manually set `hasSearchMode: true`. If you have `searchModes`, it's on.
 
@@ -144,10 +144,11 @@ Capabilities are inferred by the CLI. You can override them explicitly by settin
 
 ```ts
 capabilities: {
-  hasSearchMode: true,     // inferred from searchModes
-  isSearchProvider: true,  // inferred from searchProviders
-  hasWidget: true,         // inferred from widgets
-  lookAhead: true,         // inferred from lookAhead
+  hasSearchMode: true,        // inferred from searchModes
+  isSearchProvider: true,     // inferred from searchProviders
+  isFileSearchProvider: true, // inferred from fileSearchProviders (optional)
+  hasWidget: true,            // inferred from widgets
+  lookAhead: true,            // inferred from lookAhead
 }
 ```
 
@@ -230,7 +231,7 @@ Global search providers contribute results to Kepler's unfiltered results list. 
 
 The match function is required. If it is missing or returns `Match.none()`, Kepler never calls `run`. `match` receives only the query — no context object is passed.
 
-Kepler 0.8.0 invokes only the first `searchProviders` entry.
+Optional descriptor fields `priorityBias` (number) and `supportsTabResults` (boolean) are emitted to `manifest.json` when set.
 
 ```ts
 import { Provider, Match } from "@kepler-app/plugin-sdk";
@@ -268,11 +269,43 @@ Match.strong(data?)   // 0.8 confidence
 Match.exact(data?)    // 1.0 confidence
 ```
 
+## File search providers
+
+Declare `fileSearchProviders` to supply files to Kepler's existing File Search feature:
+
+```ts
+import { FileSearch } from "@kepler-app/plugin-sdk";
+
+fileSearchProviders: [
+  FileSearch.provider({
+    id: "files",
+    title: "Example index",
+    async run(query, ctx, { limit }) {
+      return {
+        files: [{ path: "/Users/example/report.pdf", isDirectory: false, score: 100 }].slice(0, limit),
+        status: "ready",
+      };
+    },
+  }),
+],
+```
+
+Each contribution requires `id`, `title`, and `run`; it doesn't use `match`.
+The CLI emits `id` and `title` descriptors and infers `isFileSearchProvider`.
+The collection and capability are optional, so older manifests remain valid.
+
+Return `FileSearchResponse`: `files`, optional `status`, and optional `message`.
+Each file has an absolute local `path`, `isDirectory`, and optional finite `score`.
+Omitted status means `ready`; other statuses are `indexing` and `unavailable`.
+Honor `limit` and preserve the backend's result order. Kepler uses supplied scores or ordered fallback scores.
+Kepler owns file icons, presentation, and actions; don't return JavaScript row actions.
+An empty query can check readiness without searching.
+
 ## Widgets
 
-Widgets are inline resolved views drawn below the search bar. Kepler calls `match()`, then `run()`, and renders the result inline. `match` is required; omitting it is treated as `Match.none()`.
+Widgets are inline resolved views drawn below the search bar. Kepler calls `match()`, then `run()`, and renders the result inline. Widget matching is advisory: `run` still executes with `Match.none()` when `match` does not match, so return `null` from `run` when the query isn't relevant.
 
-Kepler 0.8.0 invokes only the first `widgets` entry. `priorityBias` is decoded but not applied to JavaScript widgets — ranking uses `confidence` only.
+`priorityBias` is decoded from the manifest; ranking uses `confidence`.
 
 ```ts
 import { Widget, Confidence, Match } from "@kepler-app/plugin-sdk";
@@ -371,6 +404,7 @@ ctx.settings     // Record<string, string | number | boolean | Array<Record<stri
                  // resolved setting values, keyed by setting id. Falls back to each setting's defaultValue
 ctx.storage      // PluginStorage, see the Storage section below
 ctx.appleScript  // AppleScript bridge — requires the "appleScript" permission
+ctx.process      // Subprocess bridge — requires the "process" permission
 ctx.notify("Saved")
 ctx.notifications.show("Saved", { systemImage: "checkmark.circle.fill" })
 ```
@@ -427,7 +461,7 @@ Search prefix shortcuts let users type a word after `/` to jump into a specific 
 
 Global hotkey shortcuts register system-wide keyboard shortcuts. The `key` is a lowercase key name (`"a"`–`"z"`, `"0"`–`"9"`, `"space"`, `"return"`, `"escape"`, `"tab"`, `"delete"`, `"f1"`–`"f12"`, `"upArrow"`, `"downArrow"`, `"leftArrow"`, `"rightArrow"`). Modifiers are an array of `"command"`, `"option"`, `"shift"`, or `"control"`.
 
-`Shortcut.activateSearchMode` takes an optional third argument `{ requiresSelectedText: true }`. Kepler 0.8.0 stores the flag but only captures frontmost selected text for the built-in Spellcheck plugin. A JavaScript plugin still activates its search mode; `query.raw` is not filled with the selection.
+`Shortcut.activateSearchMode` takes an optional third argument `{ requiresSelectedText: true }`. Kepler stores the flag, though frontmost selected text capture is currently limited to the built-in Spellcheck plugin. A JavaScript plugin still activates its search mode; `query.raw` is not filled with the selection.
 
 ```ts
 Shortcut.activateSearchMode(
@@ -441,7 +475,7 @@ Shortcut.activateSearchMode(
 
 Plugins have a private key-value store that persists across launches. Each plugin only sees its own keys. Values are JSON only: strings, numbers, booleans, null, arrays, and plain objects. Functions, Dates, and circular references are not supported.
 
-Use it for caches, auth tokens, recent selections, or anything else your plugin needs to remember:
+Use it for caches, recent selections, and other non-sensitive state your plugin needs to remember:
 
 ```ts
 run(query, ctx) {
@@ -460,7 +494,7 @@ The API is intentionally small:
 
 ```ts
 ctx.storage.get(key: string): T | null     // read a value, null if missing
-ctx.storage.set(key: string, value: T)      // write a value, overwrites existing
+ctx.storage.set(key: string, value: T)      // write a value, overwrites existing (10 MiB per-plugin quota)
 ctx.storage.delete(key: string)             // remove a key, no-op if missing
 ```
 
@@ -489,7 +523,7 @@ Icon.withBadge(                             // overlay a badge icon on the botto
 
 ## Actions and results
 
-Everything your plugin returns is a `PluginListItem`:
+Search providers and search mode `run()` functions return arrays of `PluginListItem` objects:
 
 ```ts
 import { Action, Accessory } from "@kepler-app/plugin-sdk";
@@ -512,6 +546,12 @@ Action.copy("text to copy")                        // copy to clipboard
 Action.url("https://...")                          // open in default browser
 Action.appleScript('tell app "Music" to playpause') // run AppleScript
 Action.copyImage("/absolute/path/to/image.png")    // copy image bytes to the clipboard
+```
+
+Pass `{ keepOpen: true }` as the second argument to any action to keep Kepler visible. When the action belongs to the plugin whose search mode is active, Kepler reruns the current query after executing the action. Global search results aren't automatically refreshed:
+
+```ts
+Action.appleScript('tell app "Music" to playpause', { keepOpen: true })
 ```
 
 `Action.appleScript` requires `metadata.permissions: ["appleScript"]`. Without it, the action is ignored. macOS may show an Automation permission prompt the first time the script targets a specific app.
@@ -538,9 +578,38 @@ metadata: {
 }
 ```
 
-Domains are validated by the CLI. Only bare hostnames, no protocols or paths. Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too.
+Domains are validated by the CLI and enforced by the host. Declare registrable domains only (no protocols, paths, IP addresses, `.local` names, or public suffixes like `com`, `co.uk`, or `github.io`; `localhost` / loopback is only allowed during local development). Subdomains are automatically allowed, so listing `github.com` covers `api.github.com` too. Redirects are also checked against the allowlist.
 
 Both `fetch` and `XMLHttpRequest` share the same 10-second timeout, 5 MiB response limit, and permission/domain gating. `fetch` rejects invalid URLs and network, DNS, or TLS failures; HTTP responses outside 200–299 still resolve, so check `res.ok`. Its `text()` and `json()` body readers return real promises. The returned object is a host-provided `KeplerResponse`, not the browser `Response`. Headers are a plain object (`res.headers["content-type"]`), not a `Headers` instance. Calling `abort()` cancels an active XHR and resets it to `UNSENT`.
+
+## Subprocess sessions
+
+Declare `permissions: ["process"]` to communicate with a persistent subprocess:
+
+```ts
+const line = await ctx.process.request({
+  session: "index",
+  executable: "/absolute/path/to/indexer",
+  arguments: ["stdio"],
+  input: JSON.stringify({ id: "1", op: "status" }),
+  timeoutMs: 8000,
+});
+await ctx.process.close("index");
+```
+
+The executable must be an absolute or `~/` path. There is no shell or `PATH` lookup.
+The input is one UTF-8 record without LF or CR, limited to 1 MiB.
+The host appends a newline and returns one UTF-8 response line without its newline, limited to 16 MiB.
+The timeout defaults to 5000 milliseconds and must be positive and at most 8000.
+
+Requests are serialized within persistent sessions scoped to your plugin.
+Changing the executable or arguments restarts the session.
+Closing an absent session is a no-op. Unloading or disabling the plugin closes its sessions.
+Handle missing executables, transport errors, and invalid protocol responses in your plugin.
+
+The `process` permission permits programs to run with your user privileges.
+It is not restricted by `networkUrls`. Only request it when running an external program is necessary.
+Executable discovery and program-specific protocol handling belong in the plugin, not Kepler.
 
 ## Runtime limitations
 
@@ -548,8 +617,8 @@ Your plugin runs inside JavaScriptCore, not a browser and not Node. Specifically
 
 - **No DOM:** no `document`, no `window`. `localStorage` doesn't exist; use `ctx.storage` instead
 - **No Node APIs:** no `require`, no `fs`, no `process`, no `Buffer`
-- **No timers:** no `setTimeout`, no `setInterval`. Async work must use Promises and `fetch`
-- **No module system:** your script is bundled to a single IIFE that assigns `window.KeplerPlugin` (well, the JSC global equivalent). Kepler looks for that global after evaluating your script
+- **No timers:** no `setTimeout`, no `setInterval`. Async work uses Promises and host bridges
+- **No module system:** your script is bundled to a single IIFE that assigns the global `KeplerPlugin`. Kepler looks for that global after evaluating your script
 - **JSON only:** all values crossing the XPC bridge must be JSON-serializable. `undefined` becomes absent. `Date` must be an ISO 8601 string. Circular references are a runtime error
 - **`fetch` and `XMLHttpRequest` are host-provided:** HTTPS/HTTP only, text/JSON bodies only, 10-second timeout, 5 MiB response limit
 - **`console` logs in DEBUG builds only**
@@ -590,8 +659,10 @@ What gets written:
 | `permissions` | From `metadata.permissions`, defaulting to `[]` (validated) |
 | `networkUrls` | From `metadata.networkUrls`, defaulting to `[]` (validated and normalized) |
 | `settings` | From `metadata.settings` (optional) |
-| `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `keywords`, `icon`, `shortcutPrefix`, `placeholder` |
-| `contributions.searchProviders[]` | From `searchProviders` array |
+| `shortcuts` | From `metadata.shortcuts` (optional) |
+| `contributions.searchModes[]` | From `searchModes` array, each with `id`, `title`, `subtitle`, `keywords`, `icon`, `shortcutPrefix`, `placeholder` |
+| `contributions.searchProviders[]` | From `searchProviders` array, with `id`, `title`, `priorityBias`, `supportsTabResults` |
+| `contributions.fileSearchProviders[]` | From `fileSearchProviders` array (`id`, `title`, and `run` required; emits `id` and `title`) |
 | `contributions.widgets[]` | From `widgets` array, with `id`, `title`, `priorityBias` |
 | `contributions.lookAhead[]` | From `lookAhead` array (`id` and `title` required) |
 
@@ -603,7 +674,7 @@ What gets written:
 
 **Forgetting networkUrls when using fetch.** If you add `permissions: ["network"]`, you need `networkUrls` too. At least one domain. The CLI enforces this.
 
-**Relying on browser or Node globals.** `setTimeout` doesn't exist. `localStorage` doesn't exist; use `ctx.storage` instead. `process.env` doesn't exist. If you need async delays, use Promise chains.
+**Relying on browser or Node globals.** `setTimeout` doesn't exist. `localStorage` doesn't exist; use `ctx.storage` instead. `process.env` doesn't exist. Promise chains don't provide timers; rely on host-supported asynchronous operations instead.
 
 **Not bundling to IIFE.** Kepler evaluates your script and looks for a global `KeplerPlugin` object. If you emit ESM or CJS, it won't find anything.
 
@@ -613,4 +684,4 @@ What gets written:
 
 ## Migrating to 1.0
 
-SDK 1.0 removes the pre-contribution authoring surface. Use `metadata` plus `searchModes`, `searchProviders`, `widgets`, and `lookAhead`. The legacy `manifest`, `search`, `canHandle`, `searchGlobal`, `resolve`, and `lookAheadItems` fields are not loaded. Replace map resolution and section-level actions with supported list, gallery, widget, and item-action payloads. Permissions are now limited to `network` and `appleScript`; omit `permissions` and `networkUrls` when they are not needed.
+SDK 1.0 removes the pre-contribution authoring surface. Use `metadata` plus `searchModes`, `searchProviders`, `fileSearchProviders`, `widgets`, and `lookAhead`. The legacy `manifest`, `search`, `canHandle`, `searchGlobal`, `resolve`, and `lookAheadItems` fields are not loaded. Replace map resolution and section-level actions with supported list, gallery, widget, and item-action payloads. Supported permissions are `network`, `appleScript`, and `process`; omit `permissions` and `networkUrls` when they are not needed.
