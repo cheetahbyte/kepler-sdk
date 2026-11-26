@@ -538,7 +538,7 @@ import { Action, Accessory } from "@kepler-app/plugin-sdk";
 }
 ```
 
-Five action types:
+Six action types:
 
 ```ts
 Action.open("/path/to/file")                       // open a file or application
@@ -546,6 +546,7 @@ Action.copy("text to copy")                        // copy to clipboard
 Action.url("https://...")                          // open in default browser
 Action.appleScript('tell app "Music" to playpause') // run AppleScript
 Action.copyImage("/absolute/path/to/image.png")    // copy image bytes to the clipboard
+Action.searchMode("outdated", { query: "git" })    // open one of this plugin's own search modes
 ```
 
 Pass `{ keepOpen: true }` as the second argument to any action to keep Kepler visible. When the action belongs to the plugin whose search mode is active, Kepler reruns the current query after executing the action. Global search results aren't automatically refreshed:
@@ -596,6 +597,19 @@ const line = await ctx.process.request({
 });
 await ctx.process.close("index");
 ```
+
+For one-shot CLI commands that print stdout/stderr and exit, use `ctx.process.exec`:
+
+```ts
+const { exitCode, stdout, stderr } = await ctx.process.exec({
+  executable: "/opt/homebrew/bin/brew",
+  arguments: ["outdated", "--json=v2"],
+  environment: { HOMEBREW_NO_AUTO_UPDATE: "1" },
+  timeoutMs: 5000,
+});
+```
+
+`ctx.process.exec` enforces the same absolute/`~/` executable rule, 8000 ms maximum timeout, 4 MiB stdout cap, and 1 MiB stderr cap. Non-zero exit codes resolve with `exitCode` rather than rejecting.
 
 The executable must be an absolute or `~/` path. There is no shell or `PATH` lookup.
 The input is one UTF-8 record without LF or CR, limited to 1 MiB.

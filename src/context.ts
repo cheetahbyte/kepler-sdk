@@ -82,19 +82,23 @@ export interface PluginProcessRequest {
   timeoutMs?: number;
 }
 
-/**
- * Requires `process`, which permits programs to run with your user privileges.
- * Network domain restrictions do not constrain these programs.
- */
+export interface PluginProcessExecRequest {
+  executable: string;
+  arguments?: string[];
+  environment?: Record<string, string>;
+  timeoutMs?: number;
+}
+
+export interface PluginProcessExecResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
 export interface PluginProcess {
-  /**
-   * Send one record and receive one UTF-8 line without its newline (max 16 MiB).
-   * The host appends the input newline. Changing executable or arguments restarts
-   * the session. The host closes sessions when the plugin is unloaded or disabled.
-   */
   request(request: PluginProcessRequest): Promise<string>;
-  /** Close a session. Closing an absent session is a no-op. */
   close(session: string): Promise<void>;
+  exec(request: PluginProcessExecRequest): Promise<PluginProcessExecResult>;
 }
 
 /**

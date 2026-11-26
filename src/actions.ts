@@ -9,6 +9,7 @@ export type PluginAction = ActionOptions & (
   | { type: "url"; url: string }
   | { type: "appleScript"; script: string }
   | { type: "copyImage"; fileURL: string }
+  | { type: "searchMode"; searchModeID?: string; query?: string }
 );
 
 export const Action = {
@@ -28,11 +29,18 @@ export const Action = {
     return { type: "appleScript", script, ...options };
   },
 
-  /**
-   * Copy an image to the clipboard.
-   * @param fileURL Absolute file path or file:// URL to the image.
-   */
   copyImage(fileURL: string, options: ActionOptions = {}): PluginAction {
     return { type: "copyImage", fileURL, ...options };
+  },
+
+  searchMode(
+    searchModeID?: string,
+    options: { query?: string } = {}
+  ): PluginAction {
+    return {
+      type: "searchMode",
+      ...(searchModeID != null ? { searchModeID } : {}),
+      ...(options.query != null ? { query: options.query } : {}),
+    };
   },
 };

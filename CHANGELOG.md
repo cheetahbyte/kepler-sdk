@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+- Add `ctx.process.exec` (`PluginProcessExecRequest`, `PluginProcessExecResult`) for one-shot CLI execution under the `process` permission.
+- Add `Action.searchMode(searchModeID?, { query? })` to activate a search mode belonging to the same plugin.
+- Add `iconColor` (`LookAheadIconColor`), `action`, and `dismissible` to `LookAheadItem`.
+
 ## 1.2.0
 
 Aligned with Kepler 0.11.x.

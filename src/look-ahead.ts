@@ -1,3 +1,5 @@
+import type { PluginAction } from "./actions";
+
 export type LookAheadItemKind =
   | "calendar"
   | "weather"
@@ -5,16 +7,35 @@ export type LookAheadItemKind =
   | "timer"
   | "plugin";
 
+export type LookAheadIconColor =
+  | "accent"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "mint"
+  | "teal"
+  | "cyan"
+  | "blue"
+  | "indigo"
+  | "purple"
+  | "pink"
+  | "brown"
+  | "gray"
+  | "primary"
+  | "secondary";
+
 export type LookAheadItem = {
   id: string;
   title: string;
   subtitle?: string;
-  /** SF Symbol name used by the native look-ahead presentation. */
   icon?: string;
+  iconColor?: LookAheadIconColor;
   kind: LookAheadItemKind;
-  /** ISO 8601 timestamps used for ordering and presentation. */
   startDate?: string;
   endDate?: string;
   progress?: number;
   priority?: number;
+  action?: PluginAction;
+  dismissible?: boolean;
 };
